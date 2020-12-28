@@ -1,2 +1,1 @@
-# 
-Basic implementation of RL algorithms with pytorch.
+# Basic implementation of RL algorithms with pytorch.
