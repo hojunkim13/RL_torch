@@ -1,5 +1,6 @@
-IPYNB/
-example/
-.vscode/
-.ipynb_checkpoints
+IPYNB
+example
+.vscode
+.ipynb_checkpoints*
 __pycache__
+DDPG/__pycache__

@@ -24,9 +24,6 @@ class Agent:
         self.critic_target.eval()
         self.update_params(1)
 
-        if rule.load == True:
-            self.load()
-
         self.actor_optimizer = Adam(self.actor.parameters(), lr = rule.alpha)
         self.critic_optimizer = Adam(self.critic.parameters(), lr = rule.beta)
 
@@ -35,13 +32,16 @@ class Agent:
         self.gamma = rule.gamma
         self.tau = rule.tau
         self.noise = OUActionNoise(mu = np.zeros(rule.action_dim))
+        
+        if rule.load == True:
+            self.load()
 
 
     def get_action(self, state, eval = False):
         state = torch.Tensor(state).cuda().view(1, self.state_dim)
         action = self.actor(state)[0]
         if eval:
-            return action.item()
+            return action.detach().cpu().numpy()
         noise = torch.Tensor(self.noise()).float().cuda()
         return (action + noise).detach().cpu().numpy()
 
