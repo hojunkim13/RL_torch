@@ -4,6 +4,7 @@ from Rule import Rule
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 if __name__ == "__main__":
     rule = Rule()
     agent = Agent(rule)
@@ -20,6 +21,9 @@ if __name__ == "__main__":
             score += reward
             agent.replaybuffer.store(state, action, reward, state_, done)
             agent.learn()
+            state = state_
+        if (e+1) % rule.save_cycle == 0:
+            agent.save()
         score_list.append(score)
         average_score = np.mean(score_list[-100:])
         average_score_list.append(average_score)

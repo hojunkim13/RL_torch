@@ -1,10 +1,11 @@
 import torch
 from torch.optim import Adam
-from ACNet import Actor, Critic
+from ACNet import Actor, Critic, init_weights
 from ReplayBuffer import ReplayBuffer
 import torch.nn.functional as F
 from OUActionNoise import OUActionNoise
 import numpy as np
+
 
 class Agent:
     def __init__(self, rule):
@@ -12,12 +13,19 @@ class Agent:
         self.action_dim = rule.action_dim
 
         self.actor = Actor(rule)
+        self.actor.apply(init_weights)
         self.actor_target = Actor(rule)
-        self.actor_target.eval()
+        
         self.critic = Critic(rule)
+        self.critic.apply(init_weights)
         self.critic_target = Critic(rule)
+        
+        self.actor_target.eval()
         self.critic_target.eval()
         self.update_params(1)
+
+        if rule.load == True:
+            self.load()
 
         self.actor_optimizer = Adam(self.actor.parameters(), lr = rule.alpha)
         self.critic_optimizer = Adam(self.critic.parameters(), lr = rule.beta)
@@ -86,7 +94,6 @@ class Agent:
         actor_loss = (-1 * actions_value).mean()
         actor_loss.backward()
         self.actor_optimizer.step()
-
         self.update_params()
 
     def save(self):

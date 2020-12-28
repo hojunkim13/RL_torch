@@ -1,3 +1,5 @@
 IPYNB/
 example/
-.vscode
+.vscode/
+.ipynb_checkpoints
+__pycache__
