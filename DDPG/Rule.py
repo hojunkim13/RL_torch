@@ -4,11 +4,11 @@ class Rule:
     def __init__(self):
         self.n_episode = 1000
         self.save_cycle = 20
-        self.load = True
-        self.render = False
+        self.load = False
+        self.render = True
 
-        #self.env_name = 'MountainCarContinuous-v0'
-        self.env_name = 'LunarLanderContinuous-v2'
+        self.env_name = 'MountainCarContinuous-v0'
+        #self.env_name = 'LunarLanderContinuous-v2'
         #self.env_name = 'Pendulum-v0'
 
         #Hyperparameters for Training
@@ -22,8 +22,6 @@ class Rule:
         self.env = gym.make(self.env_name)
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
-        self.Load = False
-        self.Save = False
 
         #Hyperparameters for ReplayBuffer
         self.maxlen = 1000000
