@@ -4,16 +4,16 @@ from torchvision import transforms
 class Rule:
     def __init__(self):
         self.n_episode = 1000
-        self.save_cycle = 1
-        self.load = True
-        self.render = False
+        self.save_cycle = 10
+        self.load = False
+        self.render = True
 
         self.env_name = 'CarRacing-v0'
         self.frame_stack = 3
         self.frame_skip = 4
         #Hyperparameters for Training
-        self.alpha = 1e-4 #2.5e-5
-        self.beta = 1e-3 #2.5e-4
+        self.alpha = 2.5e-5
+        self.beta = 2.5e-4
         self.gamma = 0.99
         self.tau = 1e-3
 
@@ -25,5 +25,5 @@ class Rule:
         self.action_dim = self.env.action_space.shape[0]
 
         #Hyperparameters for ReplayBuffer
-        self.maxlen = 80000
+        self.maxlen = 100000
         self.batch_size = 64

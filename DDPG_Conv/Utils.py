@@ -9,21 +9,22 @@ class ReplayBuffer:
     def __init__(self, rule):
         self.batch_size = rule.batch_size
         self.maxlen = rule.maxlen
-        self.S = torch.zeros((rule.maxlen, rule.frame_stack, rule.state_dim[1], rule.state_dim[2])).float()
-        self.A = torch.zeros((rule.maxlen, rule.action_dim)).float()
-        self.R = torch.zeros((rule.maxlen, 1)).float()
-        self.S_ = torch.zeros((rule.maxlen, rule.frame_stack, rule.state_dim[1], rule.state_dim[2])).float()
-        self.D = torch.zeros((rule.maxlen, 1)).bool()
+        self.S = torch.zeros((rule.maxlen, rule.frame_stack,
+                           rule.state_dim[1], rule.state_dim[2])).float()
+        self.A = np.zeros((rule.maxlen, rule.action_dim), dtype='float')
+        self.R = np.zeros((rule.maxlen, 1), dtype = 'float')
+        self.S_ = torch.zeros((rule.maxlen, rule.frame_stack,
+                            rule.state_dim[1], rule.state_dim[2])).float()
+        self.D = np.zeros((rule.maxlen, 1), dtype='bool')
         self.mem_counter = 0
 
     def store(self, s, a, r, s_, d):
         idx = self.mem_counter % self.maxlen
-
         self.S[idx] = s
-        self.A[idx] = torch.Tensor(a)
-        self.R[idx] = torch.Tensor([r])
+        self.A[idx] = a
+        self.R[idx] = [r]
         self.S_[idx] = s_
-        self.D[idx] = torch.Tensor([d]).bool()
+        self.D[idx] = [d]
         self.mem_counter += 1
 
     def get_samples(self):
@@ -33,7 +34,7 @@ class ReplayBuffer:
         A = self.A[indices]
         R = self.R[indices]
         S_ = self.S_[indices]
-        D = self.D[indices].bool()
+        D = self.D[indices]
         return S, A, R, S_, D
 
 
@@ -59,18 +60,17 @@ class OUActionNoise(object):
 
 class Tools:
     def __init__(self, rule):
-        self.transform = transforms.Compose([transforms.Grayscale(),
-                                             transforms.Normalize(
-                                                 [0.5], [0.5]),
-                                             transforms.Resize((48, 48)),
-                                             ])
         self.tmp_states = deque(maxlen=rule.frame_stack)
+        self.transform = transforms.Compose([transforms.ToTensor(),
+                                             transforms.Grayscale(),
+                                             transforms.Resize((48, 48)),
+                                             
+                                             transforms.Normalize([0.5], [0.5]),
+                                             ])
 
     def preprocessing_image(self, state):
-        # 96, 96, 3 >> 3, 96, 96
-        state = np.transpose(state, (2, 0, 1)).copy()
-        state = torch.from_numpy(state).float()
-        return self.transform(state)
+        state = self.transform(state.copy())
+        return state
 
     def init_weights(self, params):
         if type(params) == nn.Conv2d or type(params) == nn.Linear:

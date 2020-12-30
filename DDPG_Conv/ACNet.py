@@ -19,12 +19,15 @@ class Actor(nn.Module):
                                      # 6 * 6
                                      nn.Flatten(),
                                      nn.Linear(6*6*32, 3),
-                                     nn.Tanh(),
                                      )
         self.cuda()
 
     def forward(self, state):
-        return self.ConvNet(state)
+        action = self.ConvNet(state)
+        action[:,0] = torch.tanh(action[:,0])
+        action[:,1] = torch.sigmoid(action[:,1])
+        action[:,2] = torch.sigmoid(action[:,2])
+        return action
 
 
 class Critic(nn.Module):
