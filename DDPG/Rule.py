@@ -4,16 +4,16 @@ class Rule:
     def __init__(self):
         self.n_episode = 1000
         self.save_cycle = 20
-        self.load = True
+        self.load = False
         self.render = False
 
         #self.env_name = 'MountainCarContinuous-v0'
-        self.env_name = 'LunarLanderContinuous-v2'
-        #self.env_name = 'Pendulum-v0'
+        #self.env_name = 'LunarLanderContinuous-v2'
+        self.env_name = 'Pendulum-v0'
 
         #Hyperparameters for Training
-        self.alpha = 1e-4#2.5e-5
-        self.beta = 1e-3#2.5e-4
+        self.alpha = 1e-4 #2.5e-5
+        self.beta = 1e-3 #2.5e-4
         self.gamma = 0.99
         self.tau = 1e-3
 
