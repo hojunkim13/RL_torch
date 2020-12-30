@@ -35,12 +35,11 @@ if __name__ == "__main__":
         score_list.append(score)
         average_score = np.mean(score_list[-50:])
         average_score_list.append(average_score)
-        print(f'[{e+1}/{rule.n_episode}] [Score: {score:.0f}] [Average Score: {average_score:.1f}]')
+        print(
+            f'[{e+1}/{rule.n_episode}] [Score: {score:.0f}] [Average Score: {average_score:.1f}]')
 
     plt.plot(np.arange(rule.n_episode), average_score_list)
     plt.xlabel('n_episode')
     plt.ylabel('Moving Average Score')
     plt.title(rule.env_name)
     plt.show()
-    
-    
