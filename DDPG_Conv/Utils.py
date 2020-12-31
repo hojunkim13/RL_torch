@@ -63,13 +63,13 @@ class Tools:
         self.tmp_states = deque(maxlen=rule.frame_stack)
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Grayscale(),
-                                             transforms.Resize((48, 48)),
-                                             
+                                             transforms.Resize((32, 32)), 
                                              transforms.Normalize([0.5], [0.5]),
                                              ])
 
     def preprocessing_image(self, state):
-        state = self.transform(state.copy())
+        state = state[:84,6:-6,:].copy()
+        state = self.transform(state)
         return state
 
     def init_weights(self, params):
@@ -82,5 +82,5 @@ class Tools:
 
     def get_state(self):
         state = torch.cat(
-            (self.tmp_states[0], self.tmp_states[1], self.tmp_states[2]), dim=0).cuda()
+            (self.tmp_states[0], self.tmp_states[1], self.tmp_states[2], self.tmp_states[3]), dim=0).cuda()
         return state.unsqueeze(0)

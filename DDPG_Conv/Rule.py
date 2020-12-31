@@ -9,11 +9,11 @@ class Rule:
         self.render = True
 
         self.env_name = 'CarRacing-v0'
-        self.frame_stack = 3
-        self.frame_skip = 4
+        self.frame_stack = 4
+        self.frame_skip = 8
         #Hyperparameters for Training
-        self.alpha = 2.5e-5
-        self.beta = 2.5e-4
+        self.alpha = 1e-4
+        self.beta = 1e-3
         self.gamma = 0.99
         self.tau = 1e-3
 
@@ -21,9 +21,9 @@ class Rule:
         self.env = gym.make(self.env_name)
         #state = (3, 96, 96) --> (4, 96, 96) (stacking)
         
-        self.state_dim = (3, 48, 48)
+        self.state_dim = (4, 32, 32)
         self.action_dim = self.env.action_space.shape[0]
 
         #Hyperparameters for ReplayBuffer
-        self.maxlen = 100000
-        self.batch_size = 64
+        self.maxlen = 800000
+        self.batch_size = 256

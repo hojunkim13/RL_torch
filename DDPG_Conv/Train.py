@@ -12,14 +12,10 @@ def frame_skip_step(action):
         if rule.render:
                 env.render()
         tmp_state, tmp_reward, done, _ = env.step(action)
-        if tmp_reward > 1:
-            bonus += 0.01
-            tmp_reward += bonus
         reward += tmp_reward / rule.frame_skip
         if done:
             break
     return tmp_state, reward, done, None
-
 
 
 if __name__ == "__main__":
@@ -41,9 +37,8 @@ if __name__ == "__main__":
         score = 0
         #reset env & make first state
         tmp_state = env.reset()
-        tmp_state = tool.preprocessing_image(tmp_state)
-        tool.add_to_tmp(tmp_state)
-        for _ in range(rule.frame_stack-1):
+        random_step = np.random.randint(rule.frame_stack, rule.frame_stack*2)
+        for _ in range(random_step):
             tmp_state, _, _, _ = frame_skip_step(env.action_space.sample())
             tmp_state = tool.preprocessing_image(tmp_state)
             tool.add_to_tmp(tmp_state)
