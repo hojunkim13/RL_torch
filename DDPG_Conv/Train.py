@@ -6,11 +6,10 @@ import numpy as np
 from Utils import Tools
 
 def frame_skip_step(action):
-    global bonus
     reward = 0
     for _ in range(rule.frame_skip):
         if rule.render:
-                env.render()
+            env.render()
         tmp_state, tmp_reward, done, _ = env.step(action)
         reward += tmp_reward / rule.frame_skip
         if done:
@@ -23,7 +22,6 @@ if __name__ == "__main__":
     rule = Rule()
     tool = Tools(rule)
     agent = Agent(rule, tool)
-    bonus = 0
 
 
     #make env

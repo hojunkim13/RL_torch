@@ -9,12 +9,10 @@ class ReplayBuffer:
     def __init__(self, rule):
         self.batch_size = rule.batch_size
         self.maxlen = rule.maxlen
-        self.S = torch.zeros((rule.maxlen, rule.frame_stack,
-                           rule.state_dim[1], rule.state_dim[2])).float()
+        self.S = torch.zeros((rule.maxlen, rule.frame_stack, rule.state_dim[1], rule.state_dim[2])).float()
         self.A = np.zeros((rule.maxlen, rule.action_dim), dtype='float')
         self.R = np.zeros((rule.maxlen, 1), dtype = 'float')
-        self.S_ = torch.zeros((rule.maxlen, rule.frame_stack,
-                            rule.state_dim[1], rule.state_dim[2])).float()
+        self.S_ = torch.zeros((rule.maxlen, rule.frame_stack, rule.state_dim[1], rule.state_dim[2])).float()
         self.D = np.zeros((rule.maxlen, 1), dtype='bool')
         self.mem_counter = 0
 

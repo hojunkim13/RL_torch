@@ -15,7 +15,7 @@ class Rule:
         self.alpha = 1e-4
         self.beta = 1e-3
         self.gamma = 0.99
-        self.tau = 1e-3
+        self.tau = 5e-3
 
         #Hyperparameters for Environment
         self.env = gym.make(self.env_name)
@@ -25,5 +25,5 @@ class Rule:
         self.action_dim = self.env.action_space.shape[0]
 
         #Hyperparameters for ReplayBuffer
-        self.maxlen = 800000
+        self.maxlen = 500000
         self.batch_size = 256
