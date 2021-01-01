@@ -41,7 +41,8 @@ class Agent:
         if eval:
             return action.detach().cpu().numpy()
         noise = torch.Tensor(self.noise()).float().cuda()
-        return (action + noise).detach().cpu().numpy()
+        action = torch.clip((action + noise), -1.0, +1.0)
+        return action.detach().cpu().numpy()
 
     def update_params(self, tau = None):
         if tau == None:

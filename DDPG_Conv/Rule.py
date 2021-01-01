@@ -4,7 +4,7 @@ from torchvision import transforms
 class Rule:
     def __init__(self):
         self.n_episode = 1000
-        self.save_cycle = 10
+        self.save_cycle = 1000
         self.load = False
         self.render = True
 

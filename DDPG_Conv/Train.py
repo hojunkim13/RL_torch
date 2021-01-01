@@ -7,12 +7,11 @@ from Utils import Tools
 
 def frame_skip_step(action):
     reward = 0
-    reward += action[1] * 0.01 - action[2] * 0.01
     for _ in range(rule.frame_skip):
         if rule.render:
             env.render()
         tmp_state, tmp_reward, done, _ = env.step(action)
-        reward += tmp_reward / rule.frame_skip
+        reward += tmp_reward 
         if done:
             break
     return tmp_state, reward, done, None
@@ -29,7 +28,7 @@ if __name__ == "__main__":
     env = gym.make(rule.env_name)
     score_list = []
     average_score_list = []
-
+    counter = 0
     for e in range(rule.n_episode):
         #initialize
         done = False
@@ -45,10 +44,13 @@ if __name__ == "__main__":
         while not done:
             #get action
             action = agent.get_action(state)
-            
+            print(action)
             #frame skip step & get new state
             tmp_state, reward, done, _ = frame_skip_step(action)
-            
+            if reward < 0:
+                counter += 1
+            if counter > 10:
+                reward -= -10
             tmp_state = tool.preprocessing_image(tmp_state)
             tool.add_to_tmp(tmp_state)
             state_ = tool.get_state()
