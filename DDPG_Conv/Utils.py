@@ -61,13 +61,13 @@ class Tools:
         self.tmp_states = deque(maxlen=rule.frame_stack)
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Grayscale(),
-                                             transforms.Resize((32, 32)), 
+                                             #transforms.Resize((32, 32)), 
                                              transforms.Normalize([0.5], [0.5]),
                                              ])
 
     def preprocessing_image(self, state):
-        state = state[:84,6:-6,:].copy()
-        state = self.transform(state)
+        #state = state[:84,6:-6,:].copy()
+        state = self.transform(state.copy())
         return state
 
     def init_weights(self, params):

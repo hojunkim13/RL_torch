@@ -7,6 +7,7 @@ from Utils import Tools
 
 def frame_skip_step(action):
     reward = 0
+    reward += action[1] * 0.01 - action[2] * 0.01
     for _ in range(rule.frame_skip):
         if rule.render:
             env.render()
