@@ -66,7 +66,7 @@ class Tools:
                                              ])
 
     def preprocessing_image(self, state):
-        #state = state[:84,6:-6,:].copy()
+        state = state[:84,6:-6,:].copy()
         state = self.transform(state.copy())
         return state
 
