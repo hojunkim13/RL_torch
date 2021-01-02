@@ -83,7 +83,7 @@ class Agent:
         critic_target = R + self.gamma * values_ * ~D
         
         self.critic_optimizer.zero_grad()
-        critic_loss = F.mse_loss(values, critic_target)
+        critic_loss = F.mse_loss(values, critic_target.detach())
         critic_loss.backward()
         self.critic_optimizer.step()
         

@@ -9,8 +9,8 @@ class Rule:
         self.render = True
 
         #self.env_name = 'MountainCarContinuous-v0'
-        #self.env_name = 'LunarLanderContinuous-v2'
-        self.env_name = 'Pendulum-v0'
+        self.env_name = 'LunarLanderContinuous-v2'
+        #self.env_name = 'Pendulum-v0'
 
         #Hyperparameters for Training
         self.alpha = 1e-4 #2.5e-5
