@@ -16,6 +16,7 @@ class Agent:
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.action_space = [i for i in range(action_dim)]
+        
         self.time_step = time_step
         self.K_epochs = K_epochs
 

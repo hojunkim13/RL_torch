@@ -23,19 +23,31 @@ class ActorCritic(nn.Module):
                                    nn.ReLU(),
                                    # 3 * 3
                                    nn.Conv2d(128, 256, 3, 1, 0),
+                                   nn.ReLU(),
                                    nn.Flatten(),
                                    )
 
-        self.actor = nn.Sequential(nn.Linear(256, action_dim),
-                                    nn.Softmax(1))
-        
-        self.critic = nn.Linear(256, 1)
+        self.fc = nn.Sequential(nn.Linear(256, 100),
+                                   nn.ReLU())
+
+        self.alpha = nn.Sequential(nn.Linear(100,3),
+                                   nn.Softplus())
+
+        self.beta = nn.Sequential(nn.Linear(100,3),
+                                   nn.Softplus())                                   
+
+        self.critic = nn.Sequential(nn.Linear(256, 100),
+                                    nn.ReLU(),
+                                    nn.Linear(100,1))
 
         self.cuda()
 
     def forward(self, state):
         feature = self.ConvNet(state)
-        policy = self.actor(feature)
         value = self.critic(feature)
-        return policy, value
+
+        x = self.fc(feature)
+        alpha = self.alpha(x) + 1
+        beta = self.beta(x) + 1
+        return (alpha, beta), value
 

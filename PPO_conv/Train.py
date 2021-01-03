@@ -10,15 +10,15 @@ env_name = 'CarRacing-v0'
 
 
 n_episode = 1000
-frame_skip = 4
+frame_skip = 8
 frame_stack = 4
 env = Environment(env_name, frame_skip, frame_stack)
 
 state_dim = (4, 96, 96)
-action_dim = 5
+action_dim = 3
 load = True
 render = True
-save_freq = 10
+save_freq = 100
 gamma = 0.99
 lmbda = 0.95
 lr = 1e-4
@@ -50,6 +50,7 @@ if __name__ == "__main__":
                 if done:
                     break
             agent.learn()
+            
         #done
         env.env.close()
         if (e+1) % save_freq == 0:

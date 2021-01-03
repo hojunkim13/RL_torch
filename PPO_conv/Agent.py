@@ -19,7 +19,7 @@ class Agent:
         self.K_epochs = K_epochs
 
         self.S = np.zeros((time_step,)+ state_dim, dtype = 'float')
-        self.A = np.zeros((time_step, 1))
+        self.A = np.zeros((time_step, action_dim))
         self.R = np.zeros((time_step, 1), dtype = 'float')
         self.S_ = np.zeros((time_step,)+ state_dim, dtype = 'float')
         self.D = np.zeros((time_step, 1), dtype = 'bool')
@@ -30,10 +30,14 @@ class Agent:
     def get_action(self, state):
         state = torch.Tensor(state).cuda()
         with torch.no_grad():
-            policy = self.Net(state)[0][0].detach().cpu().numpy()
-        action = np.random.choice(range(self.action_dim), p = policy)
-        prob = policy[action]
-        return action, prob
+            alpha, beta = self.Net(state)[0]
+        distribution = torch.distributions.Beta(alpha, beta)
+        action = distribution.sample()
+        log_prob = distribution.log_prob(action).sum(dim=1)
+        
+        action = action.squeeze().cpu().numpy()
+        log_prob = log_prob.item()
+        return action, log_prob
 
     def store(self, s, a, r, s_, d, a_prob):
         idx = self.mntr
@@ -46,7 +50,7 @@ class Agent:
         self.P[idx] = a_prob
         self.mntr += 1
 
-    def get_advantage(self, S, A, R, S_, D):
+    def get_advantage(self, S, R, S_, D):
         with torch.no_grad():
             _, value = self.Net(S)
             _, value_ = self.Net(S_)
@@ -63,7 +67,7 @@ class Agent:
     def learn(self):
 
         S = torch.Tensor(self.S[:self.mntr]).cuda()
-        A = torch.Tensor(self.A[:self.mntr]).cuda().long()
+        A = torch.Tensor(self.A[:self.mntr]).cuda()
         R = torch.Tensor(self.R[:self.mntr]).cuda()
         S_= torch.Tensor(self.S_[:self.mntr]).cuda()
         D = torch.Tensor(self.D[:self.mntr]).cuda().bool()
@@ -74,11 +78,12 @@ class Agent:
             
             self.optimizer.zero_grad()
             
-            advantage, td_target = self.get_advantage(S, A, R, S_, D)
+            advantage, td_target = self.get_advantage(S, R, S_, D)
     
-            policy, value = self.Net(S)
-            prob_new = policy.gather(1, A)
-            ratio = torch.exp(torch.log(prob_new) - torch.log(P))
+            (alpha,beta), value = self.Net(S)
+            dist = torch.distributions.Beta(alpha, beta)
+            a_logp = dist.log_prob(A).sum(dim = 1, keepdim = True)
+            ratio = torch.exp(a_logp - P)
             
             surrogate1 = ratio * advantage
             surrogate2 = torch.clip(ratio, 1-self.epsilon, 1+self.epsilon) * advantage

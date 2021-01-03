@@ -9,30 +9,19 @@ class Environment:
         self.frame_skip = frame_skip
         self.frame_stack = frame_stack
         self.buffer = deque(maxlen = frame_stack)
-        self.action_space = [(0., 0., 0.),
-                             (0., 1.0, 0.8),
-                             (0., 0., 0.8),
-                             (-1., 0., 0.),
-                             (+1., 0., 0.)]
         self.reward_counter = 0
 
     def step(self, action, render = False):
         total_reward = 0
-        action = self.action_space[action]
+        action = action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.])
         for _ in range(self.frame_skip):
             if render:
                 self.env.render()
             state_, reward, done, info = self.env.step(action)
-            if reward > 0:
-                reward = 5.0
-            if reward < 0:
-                self.reward_counter = 1
-            else:
-                self.reward_counter = 0
-            if self.reward_counter >= 300:
-                done = True
+            
             if np.mean(state_[:, :, 1]) > 185.0:
                 reward -= 0.05
+            if done:
                 break
 
             total_reward += reward
