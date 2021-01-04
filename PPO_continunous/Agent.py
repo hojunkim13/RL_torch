@@ -18,7 +18,7 @@ class Agent:
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.data = np.empty(timestep, np.dtype([('s', np.float64, (state_dim,)),
-                                                 ('a', np.long, (action_dim,)),
+                                                 ('a', np.long, (1,)),
                                                  ('log_prob', np.float64, (1,)),
                                                  ('r', np.float64, (1,)),
                                                  ('s_', np.float64, (state_dim,)),
@@ -53,15 +53,14 @@ class Agent:
             self.optimizer.zero_grad()
             td_target, advantage = self.get_advantage(S,R,S_,D)
             policy, value = self.net(S)
-            dist = torch.distributions.categorical.Categorical(policy)
-            log_prob_new = dist.log_prob(A)
+            prob_new = policy.gather(1, A)
+            log_prob_new = torch.log(prob_new)
             ratio = torch.exp(log_prob_new - log_prob_old)
             surrogate1 = ratio * advantage
             surrogate2 = torch.clip(ratio, 1-self.epsilon, 1+self.epsilon) * advantage
-            a_loss = -torch.min(surrogate1, surrogate2, dim= 1)
-            
-            v_loss = F.smooth_l1_loss(value, td_target) #detach 추가?... 내생각엔 필요없다.
-            (a_loss.mean() + v_loss).backward()
+            a_loss = -torch.min(surrogate1, surrogate2).mean()
+            v_loss = F.smooth_l1_loss(value, td_target.detach())
+            (a_loss + v_loss).backward()
             self.optimizer.step()
         self.mntr = 0 
         

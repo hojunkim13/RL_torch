@@ -6,7 +6,9 @@ class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
         self.fcnet = nn.Sequential(nn.Linear(state_dim, 256),
-                                   nn.ReLU())
+                                   nn.ReLU(),
+                                   nn.Linear(256, 256),
+                                   nn.ReLU(),)
         self.policy = nn.Sequential(nn.Linear(256, action_dim),
                                     nn.Softmax(dim = 1))
         self.value =  nn.Linear(256, 1)
