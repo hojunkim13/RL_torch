@@ -8,7 +8,11 @@ import numpy as np
 env_name = 'LunarLander-v2'
 env = gym.make(env_name)
 state_dim = env.observation_space.shape[0]
+<<<<<<< HEAD
 action_dim= env.action_space.shape[0]
+=======
+action_dim= env.action_space.n
+>>>>>>> 1b86fe8af3eba1a3e5abb479986ab2f403857569
 n_episode = 2000
 lr = 5e-4
 gamma = 0.98
@@ -29,7 +33,7 @@ if __name__ == "__main__":
         state = env.reset()
         while not done:
             for _ in range(timestep):
-                env.render()
+                #env.render()
                 action, log_prob = agent.get_action(state)
                 state_, reward, done, _ = env.step(action)
                 score += reward
