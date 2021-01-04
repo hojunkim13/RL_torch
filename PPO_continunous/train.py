@@ -5,7 +5,7 @@ import numpy as np
 
 
 
-env_name = 'BipedalWalker-v3'
+env_name = 'LunarLander-v2'
 env = gym.make(env_name)
 state_dim = env.observation_space.shape[0]
 action_dim= env.action_space.shape[0]
