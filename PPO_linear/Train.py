@@ -8,7 +8,7 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.n
 
 n_episode = 1000
-load = True
+load = False
 render = False
 save_freq = 10
 gamma = 0.98
