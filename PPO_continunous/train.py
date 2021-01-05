@@ -2,26 +2,31 @@ import gym
 import matplotlib.pyplot as plt
 from Agent import Agent
 import numpy as np
+from Environment import Environment
 
 
+env_name = 'CarRacing-v0'
+env = Environment()
+state_dim = env.state_dim
+action_dim= env.action_dim
 
-env_name = 'Pendulum-v0'
-env = gym.make(env_name)
-state_dim = env.observation_space.shape[0]
-action_dim= env.action_space.shape[0]
+save_cycle = 10
+load = False
+render = False
 n_episode = 1000
 lr = 1e-4
 gamma = 0.9
 lmbda = 0.9
 epsilon = 0.2
 buffer_size = 1000
-batch_size = 256
+batch_size = 64
 k_epochs = 10
-
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
 
 
 if __name__ == "__main__":
+    if load:
+        agent.load()
     score_list = []
     avg_score_list = []
     for e in range(n_episode):
@@ -29,13 +34,16 @@ if __name__ == "__main__":
         done = False
         state = env.reset()
         while not done:
-            env.render()
+            if render()
+                env.render()
             action, log_prob = agent.get_action(state)
             state_, reward, done, _ = env.step(action)
             score += reward
-            agent.store((state,action,log_prob,reward/10,state_,done))
+            agent.store((state,action,log_prob,reward,state_,done))
             state = state_
-            agent.learn()            
+            agent.learn()
+        if (e+1) % save_cycle ==0:
+            agent.save()            
         score_list.append(score)
         avg_score = np.mean(score_list[-100:])
         avg_score_list.append(avg_score)
@@ -47,3 +55,4 @@ if __name__ == "__main__":
     plt.ylabel('Moving Average Score')
     plt.title(env_name)
     plt.show()
+

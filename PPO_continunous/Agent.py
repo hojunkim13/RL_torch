@@ -86,3 +86,9 @@ class Agent:
             advantage[i] = delta[i] + running_add * self.gamma * self.lmbda
             running_add = advantage[i]
         return td_target, advantage
+
+    def save(self, path):
+        torch.save(self.net.state_dict(), path + '_ppo.pt')
+
+    def load(self, path):
+        self.net.load_state_dict(torch.load(path + '_ppo.pt'))
