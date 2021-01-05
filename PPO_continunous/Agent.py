@@ -20,19 +20,18 @@ class Agent:
         self.action_dim = action_dim
         self.buffer_size = buffer_size
         self.batch_size = batch_size
-        self.S = np.zeros((buffer_size, state_dim), dtype = 'float')
-        self.A = np.zeros((buffer_size, action_dim), dtype = 'float')
-        self.P = np.zeros((buffer_size, action_dim), dtype = 'float')
-        self.R = np.zeros((buffer_size, 1), dtype = 'float')
-        self.S_= np.zeros((buffer_size, state_dim), dtype = 'float')
-        self.D = np.zeros((buffer_size, 1), dtype = 'bool')
+        self.S = torch.zeros((buffer_size, 4, 96, 96), dtype = torch.float)
+        self.A = torch.zeros((buffer_size, action_dim), dtype = torch.float)
+        self.P = torch.zeros((buffer_size, action_dim), dtype = torch.float)
+        self.R = torch.zeros((buffer_size, 1), dtype = torch.float)
+        self.S_= torch.zeros((buffer_size, 4, 96, 96), dtype = torch.float)
+        self.D = torch.zeros((buffer_size, 1), dtype = torch.bool)
         self.mntr = 0                                                
-
+        
     def get_action(self, state):
-        state = torch.Tensor(state).cuda().view(-1, self.state_dim)
         with torch.no_grad():
-            mu, std = self.net(state)[0]
-        dist = torch.distributions.Normal(mu, std)
+            alpha, beta = self.net(state)[0]
+        dist = torch.distributions.Beta(alpha, beta)
         action = dist.sample()[0]
         log_prob = dist.log_prob(action)[0]
         return action.detach().cpu().numpy(), log_prob.detach().cpu().numpy()
@@ -40,8 +39,8 @@ class Agent:
     def store(self, transition):
         index = self.mntr % self.buffer_size
         self.S[index] = transition[0]
-        self.A[index] = transition[1]
-        self.P[index] = transition[2]
+        self.A[index] = torch.Tensor(transition[1])
+        self.P[index] = torch.Tensor(transition[2])
         self.R[index] = transition[3]
         self.S_[index] = transition[4]
         self.D[index] = transition[5]
@@ -55,14 +54,14 @@ class Agent:
         log_prob_old = torch.Tensor(self.P).float().cuda()
         R = torch.Tensor(self.R).float().cuda()
         S_ = torch.Tensor(self.S_).float().cuda()
-        D = torch.Tensor(self.D).bool().cuda()
+        D = torch.BoolTensor(self.D).cuda()
         
         td_target, advantage = self.get_advantage(S,R,S_,D)
 
         for i in range(self.k_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(self.buffer_size)), self.batch_size, False):
-                (mu, std), value = self.net(S[index])                
-                dist = torch.distributions.Normal(mu, std)
+                (alpha, beta), value = self.net(S[index])                
+                dist = torch.distributions.Beta(alpha, beta)
                 log_prob_new = dist.log_prob(A[index])
                 ratio = torch.exp(log_prob_new - log_prob_old[index])
                 surrogate1 = ratio * advantage[index]

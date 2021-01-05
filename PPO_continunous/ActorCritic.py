@@ -29,7 +29,7 @@ class ActorCritic(nn.Module):
                                     nn.Softplus())
         self.value = nn.Sequential(nn.Linear(256, 100),
                                    nn.ReLU(),
-                                   nn.Linear(100, 1)
+                                   nn.Linear(100, 1))
         self.apply(self._weights_init)
         self.cuda()
 

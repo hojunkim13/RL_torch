@@ -8,7 +8,7 @@ import numpy as np
 class Environment:
     def __init__(self):
         self.env = gym.make('CarRacing-v0')
-        self.state_dim = (3,96,96)
+        self.state_dim = (4,96,96)
         self.action_dim = 3
         self.transforms = transforms.Compose([transforms.ToTensor(),
                                             transforms.Grayscale(),
@@ -17,13 +17,15 @@ class Environment:
         self.tmp = deque(maxlen = 4)
 
     def preprocessing(self,state):
-        state = torch.Tensor(state).cuda()
-        state = self.transforms(state)
+        state = self.transforms(state.copy())
         return state.view(-1,1,96,96)
 
-    def step(self, action):
+    def step(self, action, render = False):
         reward = 0
+        action = (action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
         for _ in range(8):
+            if render:
+                self.env.render()
             state_, tmp_reward, done, info = self.env.step(action)
             reward += tmp_reward
         reward = np.clip(reward, -5, 5)
@@ -40,8 +42,8 @@ class Environment:
         return self.get_state()
 
     def get_state(self):
-        state = np.concatenate((self.tmp[0], self.tmp[1],
-                                self.tmp[2], self.tmp[3]), axis = 0)
+        state = torch.cat((self.tmp[0], self.tmp[1],
+                                self.tmp[2], self.tmp[3]), axis = 1)
         return state
 
     def render(self):
