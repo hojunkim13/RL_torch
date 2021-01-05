@@ -10,12 +10,12 @@ env = gym.make(env_name)
 state_dim = env.observation_space.shape[0]
 action_dim= env.action_space.shape[0]
 n_episode = 1000
-lr = 3e-4
+lr = 1e-4
 gamma = 0.9
 lmbda = 0.9
 epsilon = 0.2
 buffer_size = 1000
-batch_size = 32
+batch_size = 256
 k_epochs = 10
 
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
@@ -29,10 +29,11 @@ if __name__ == "__main__":
         done = False
         state = env.reset()
         while not done:
+            env.render()
             action, log_prob = agent.get_action(state)
             state_, reward, done, _ = env.step(action)
             score += reward
-            agent.store((state,action,log_prob,reward,state_,done))
+            agent.store((state,action,log_prob,reward/10,state_,done))
             state = state_
             agent.learn()            
         score_list.append(score)

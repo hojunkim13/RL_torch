@@ -72,7 +72,7 @@ class Agent:
                 
                 self.optimizer.zero_grad()
                 (a_loss + v_loss).backward()
-                #torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
+                torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
                 self.optimizer.step()
                 self.mntr = 0
 
