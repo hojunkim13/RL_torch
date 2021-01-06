@@ -10,7 +10,7 @@ env = Environment()
 state_dim = env.state_dim
 action_dim= env.action_dim
 
-save_cycle = 10000
+save_cycle = 10
 load = True
 render = True
 n_episode = 1000
