@@ -1,11 +1,12 @@
-import os
-from Network import DQNNetwork
-from ReplayBuffer import ReplayBuffer
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from Network_2D import DQNNetwork
+from Utils.ReplayBuffer import ReplayBuffer
 import torch
 import numpy as np
 
 class Agent:
-    def __init__(self, n_state = 16, n_action = 4, mem_max = 10000, lr = 1e-3, gamma = 0.99):
+    def __init__(self, n_state, n_action, lr, gamma, mem_max, epsilon_decay, batch_size):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.sync()
@@ -14,9 +15,10 @@ class Agent:
         self.n_action = n_action
         self.actionSpace = [action for action in range(n_action)]
         self.epsilon_min = 0.01
-        self.epsilon_deacy = 0.999
+        self.epsilon_deacy = epsilon_decay
         self.epsilon = 1
         self.gamma = gamma
+        self.batch_size = batch_size
         self.memory = ReplayBuffer(mem_max, n_state, n_action)
 
     def getAction(self, state, test_mode = False):
@@ -33,7 +35,7 @@ class Agent:
     def learn(self):
         if self.memory.mem_cntr <= 1000:
             return
-        S, A, R, S_, D = self.memory.getSample(64)
+        S, A, R, S_, D = self.memory.getSample(self.batch_size)
         S = torch.tensor(S, dtype = torch.float).cuda()
         A = torch.tensor(A, dtype = torch.int64).cuda()
         R = torch.tensor(R, dtype = torch.float).cuda()
@@ -58,8 +60,11 @@ class Agent:
         self.net_.load_state_dict(weight_dict)
 
     def load(self, env_name):
-        for file_name in os.listdir("model"):
+        for file_name in os.listdir("./DQN/model"):
             if env_name in file_name:
-                weight_dict = torch.load("model/" + file_name)
-        self.net.load_state_dict(weight_dict)
-        self.net_.load_state_dict(weight_dict)
+                weight_dict = torch.load("./DQN/model/" + file_name)
+        try:
+            self.net.load_state_dict(weight_dict)
+            self.net_.load_state_dict(weight_dict)
+        except:
+            print("Can't found model weights")
