@@ -6,7 +6,7 @@ class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
                                     #4, 96, 96
-        self.fcnet = nn.Sequential(nn.Conv2d(4,16,4,2,1),
+        self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],16,4,2,1),
                                    nn.ReLU(),
                                    # 48 48 
                                    nn.Conv2d(16,32,4,2,1),

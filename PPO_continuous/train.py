@@ -1,4 +1,3 @@
-import gym
 import matplotlib.pyplot as plt
 from Agent import Agent
 import numpy as np
@@ -7,21 +6,21 @@ from Environment import Environment
 
 env_name = 'CarRacing-v0'
 env = Environment()
-state_dim = env.state_dim
-action_dim= env.action_dim
+state_dim = (1,96,96)
+action_dim = 3
 
-save_cycle = 1000
-load = True
+save_cycle = 1
+load = False
 render = True
-n_episode = 1000
+n_episode = 10000
 lr = 1e-4
-gamma = 0.9
-lmbda = 0.9
-epsilon = 0.2
+gamma = 0.99
+lmbda = 0.95
+epsilon = 0.15
 buffer_size = 1000
-batch_size = 64
+batch_size = 512
 k_epochs = 10
-path = './model/' + env_name
+path = './PPO_continuous/model/' + env_name
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
 
 
