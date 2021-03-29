@@ -1,7 +1,9 @@
 import numpy as np
-import os
+import os, sys
 from _2048 import Game2048
 import pygame
+path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(path)
 from Env import Game2048_wrapper
 from Agent import Agent
 
@@ -43,6 +45,8 @@ if __name__ == "__main__":
             action = agent.getAction(state, True)
             state_, reward, done = env.step(action)
             score += reward
+            if reward == -1:
+                print("warn ", action)
             agent.memory.stackMemory(state, action, reward, state_, done)
             state = state_            
             env.draw()

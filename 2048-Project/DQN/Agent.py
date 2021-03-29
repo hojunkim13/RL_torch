@@ -8,11 +8,13 @@ import numpy as np
 
 
 class Agent:
-    def __init__(self, n_state, n_action, lr, gamma, mem_max, epsilon_decay, epsilon_min, batch_size):
+    def __init__(self, n_state, n_action, lr, gamma, mem_max,
+    epsilon_decay, epsilon_min, batch_size, learning_step, tau):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.net_.eval()
-        self.sync()
+        self.update()
+        self.tau = tau
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr = lr)
         self.n_state = n_state
         self.n_action = n_action
@@ -23,6 +25,8 @@ class Agent:
         self.gamma = gamma
         self.batch_size = batch_size
         self.memory = ReplayBuffer(mem_max, n_state, n_action)
+        self.learning_step = learning_step
+        self.step = 0
 
     def getAction(self, state, test_mode = False):
         if test_mode or self.epsilon < np.random.rand():
@@ -38,6 +42,10 @@ class Agent:
 
     def learn(self):
         if self.memory.mem_cntr <= self.batch_size:
+            self.step = 0 
+            return
+            
+        if self.step != self.learning_step:
             return
         
         S, A, R, S_, D = self.memory.getSample(self.batch_size)
@@ -57,12 +65,18 @@ class Agent:
         for param in self.net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
+        self.softUpdate()
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_deacy
         else:
-            self.epsilon = self.epsilon_min        
+            self.epsilon = self.epsilon_min
+        self.step = 0
     
-    def sync(self):
+    def softUpdate(self):
+        for target_param, local_param in zip(self.net_.parameters(), self.net.parameters()):
+            target_param.data.copy_(self.tau * local_param.data + (1-self.tau) * target_param.data)
+    
+    def update(self):
         weight_dict = self.net.state_dict()
         self.net_.load_state_dict(weight_dict)
 

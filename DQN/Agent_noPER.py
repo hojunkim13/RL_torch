@@ -1,12 +1,12 @@
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from Network import DQNNetwork
+from Network_1D import DQNNetwork
 from Utils.ReplayBuffer import ReplayBuffer
 import torch
 import numpy as np
 
 class Agent:
-    def __init__(self, n_state, n_action, lr, gamma, mem_max, epsilon_decay,epsilon_min, batch_size):
+    def __init__(self, n_state, n_action, lr, gamma, mem_max, epsilon_decay, batch_size):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.sync()
@@ -14,7 +14,7 @@ class Agent:
         self.n_state = n_state
         self.n_action = n_action
         self.actionSpace = [action for action in range(n_action)]
-        self.epsilon_min = epsilon_min
+        self.epsilon_min = 0.01
         self.epsilon_deacy = epsilon_decay
         self.epsilon = 1
         self.gamma = gamma
@@ -33,9 +33,8 @@ class Agent:
             
 
     def learn(self):
-        if self.memory.mem_cntr <= 300:
+        if self.memory.mem_cntr <= 1000:
             return
-        
         S, A, R, S_, D = self.memory.getSample(self.batch_size)
         S = torch.tensor(S, dtype = torch.float).cuda()
         A = torch.tensor(A, dtype = torch.int64).cuda()
@@ -67,6 +66,5 @@ class Agent:
         try:
             self.net.load_state_dict(weight_dict)
             self.net_.load_state_dict(weight_dict)
-            print("load success")
         except:
             print("Can't found model weights")

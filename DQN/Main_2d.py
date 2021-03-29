@@ -36,7 +36,7 @@ if __name__ == "__main__":
             agent.memory.stackMemory(state, action, reward, state_, done)
             agent.learn()
             state = state_
-        env.close()
+        #env.close()
         agent.sync()
         try:
             if max(scores) <= score:
