@@ -20,11 +20,11 @@ class Agent:
         self.action_dim = action_dim
         self.buffer_size = buffer_size
         self.batch_size = batch_size
-        self.S = torch.zeros((buffer_size, 4, 96, 96), dtype = torch.float)
+        self.S = torch.zeros((buffer_size,) + state_dim, dtype = torch.float)
         self.A = torch.zeros((buffer_size, action_dim), dtype = torch.float)
         self.P = torch.zeros((buffer_size, action_dim), dtype = torch.float)
         self.R = torch.zeros((buffer_size, 1), dtype = torch.float)
-        self.S_= torch.zeros((buffer_size, 4, 96, 96), dtype = torch.float)
+        self.S_= torch.zeros((buffer_size,) + state_dim, dtype = torch.float)
         self.D = torch.zeros((buffer_size, 1), dtype = torch.bool)
         self.mntr = 0                                                
         
