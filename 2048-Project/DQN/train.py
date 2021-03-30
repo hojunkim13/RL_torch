@@ -1,11 +1,8 @@
-import time
 import numpy as np
 import os, sys
 from _2048 import Game2048
 import pygame
 from Agent import Agent
-path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-sys.path.append(path)
 from Env import Game2048_wrapper
 
 env_name = "2048"
@@ -15,11 +12,9 @@ n_action = 4
 learing_rate = 1e-4
 gamma = 0.99
 replay_memory_buffer_size = 10000
-learning_step = 10
 epsilon_decay = 0.999
 epsilon_min = 0.05
-network_sync_freq = 10000
-batch_size = 512
+batch_size = 64
 tau = 1e-3
 
 
@@ -34,9 +29,9 @@ pygame.display.set_icon(Game2048.icon(32))
 if __name__ == "__main__":
     env = Game2048_wrapper(screen, p1, p2)
     agent = Agent(n_state, n_action, learing_rate, gamma, replay_memory_buffer_size,
-                epsilon_decay,epsilon_min, batch_size, learning_step = learning_step, tau = tau)
+                epsilon_decay,epsilon_min, batch_size,tau)
 
-    #agent.load(env_name)
+    agent.load(env_name)
     n_episode = 200
     scores = []
     for episode in range(n_episode):
@@ -48,9 +43,9 @@ if __name__ == "__main__":
             action = agent.getAction(state)
             state_, reward, done = env.step(action)
             score += reward
-            agent.memory.stackMemory(state, action, reward, state_, done)
-            agent.step += 1
+            agent.storeTransition((state, action, reward, state_, done))
             agent.learn()
+            agent.softUpdate()
             state = state_ 
         scores.append(score)
         movingAverageScore = np.mean(scores[-100:])

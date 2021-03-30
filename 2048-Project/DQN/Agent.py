@@ -1,15 +1,13 @@
 import os, sys
-path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-sys.path.append(path.replace("\\2048-Project",""))
 from Network import DQNNetwork
-from Utils.ReplayBuffer import ReplayBuffer
+from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
 
 
 class Agent:
     def __init__(self, n_state, n_action, lr, gamma, mem_max,
-    epsilon_decay, epsilon_min, batch_size, learning_step, tau):
+    epsilon_decay, epsilon_min, batch_size, tau):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.net_.eval()
@@ -24,9 +22,8 @@ class Agent:
         self.epsilon = 1
         self.gamma = gamma
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(mem_max, n_state, n_action)
-        self.learning_step = learning_step
-        self.step = 0
+        self.memory = PrioritizedExperienceReplay(mem_max)
+        
 
     def getAction(self, state, test_mode = False):
         if test_mode or self.epsilon < np.random.rand():
@@ -39,38 +36,48 @@ class Agent:
             action = np.random.choice(self.actionSpace)
             return action
             
+    def storeTransition(self, transition):
+        state, action, reward, state_, done = transition
+        with torch.no_grad():
+            state = torch.tensor(state, dtype = torch.float).unsqueeze(0).cuda()
+            state_ = torch.tensor(state_, dtype = torch.float).unsqueeze(0).cuda()
+            value = self.net(state)[0][action]
+            target_value = reward + self.gamma * torch.max(self.net_(state_), 1)[0].squeeze() * (not done)
+            error = torch.abs(target_value - value).cpu().numpy()
+        self.memory.add(transition, error)
 
     def learn(self):
-        if self.memory.mem_cntr <= self.batch_size:
-            self.step = 0 
+        if self.memory.tree.n_entries < 1000:
             return
-            
-        if self.step != self.learning_step:
-            return
-        
-        S, A, R, S_, D = self.memory.getSample(self.batch_size)
-        S = torch.tensor(S, dtype = torch.float).cuda()
-        A = torch.tensor(A, dtype = torch.int64).cuda()
-        R = torch.tensor(R, dtype = torch.float).cuda()
-        S_ = torch.tensor(S_, dtype = torch.float).cuda()
-        D = torch.tensor(D, dtype = torch.bool).cuda()
-        
-        #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
-        value = torch.gather(self.net(S), dim= 1, index = A)
-        target_value = R + self.gamma * torch.max(self.net_(S_), dim = 1)[0].unsqueeze(-1) * ~D
-        
-        self.optimizer.zero_grad()
-        loss = torch.nn.functional.smooth_l1_loss(target_value, value)
-        loss.backward()
-        for param in self.net.parameters():
-            param.grad.data.clamp_(-1, 1)
-        self.optimizer.step()
-        self.softUpdate()
+
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_deacy
         else:
             self.epsilon = self.epsilon_min
-        self.step = 0
+
+        data, indice, is_weights = self.memory.sample(self.batch_size)
+        data = np.transpose(data)
+
+        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1,1,4,4)
+        A = torch.tensor(list(data[1]), dtype = torch.int64).cuda()
+        R = torch.tensor(list(data[2]), dtype = torch.float).cuda()
+        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1,1,4,4)
+        D = torch.tensor(list(data[4]), dtype = torch.bool).cuda()
+        
+        #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
+        value = torch.gather(self.net(S), dim= 1, index = A.unsqueeze(-1)).squeeze()
+        target_value = R + self.gamma * torch.max(self.net_(S_), dim = 1)[0] * ~D
+        
+        errors = torch.abs(target_value - value).detach().cpu().numpy()
+        for idx in range(self.batch_size):
+            index = indice[idx]
+            self.memory.update(index, errors[idx])
+                
+        self.optimizer.zero_grad()        
+        loss = torch.nn.functional.mse_loss(target_value, value)
+        loss = (torch.tensor(is_weights).float().cuda() * loss).mean()
+        loss.backward()
+        self.optimizer.step()      
     
     def softUpdate(self):
         for target_param, local_param in zip(self.net_.parameters(), self.net.parameters()):
@@ -88,6 +95,7 @@ class Agent:
                     break
             self.net.load_state_dict(weight_dict)
             self.net_.load_state_dict(weight_dict)
+            self.epsilon = self.epsilon_min
             print(f"load success, filename : {file_name}")
         except:
             print("Can't found model weights")
