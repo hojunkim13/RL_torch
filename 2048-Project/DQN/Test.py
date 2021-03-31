@@ -9,7 +9,7 @@ from Agent import Agent
 
 env_name = "2048"
 load = False
-n_state = (1,4,4)
+n_state = (16,4,4)
 n_action = 4
 learing_rate = 1e-3
 gamma = 0.99
@@ -30,26 +30,22 @@ pygame.display.set_icon(Game2048.icon(32))
 if __name__ == "__main__":
     env = Game2048_wrapper(screen, p1, p2)
     agent = Agent(n_state, n_action, learing_rate, gamma, replay_memory_buffer_size,
-                epsilon_decay,epsilon_min, batch_size)    
+                epsilon_decay,epsilon_min, batch_size, gamma, gamma)
     agent.net.eval()
     agent.net_.eval()
     agent.load(env_name)
     n_episode = 1
     scores = []
-    score_old = 0
+    env.draw()
     for episode in range(n_episode):
-        state = env.reset()
+        state = env.reset(True)
         done = False
         score = 0
         while not done:
             action = agent.getAction(state, True)
             state_, reward, done = env.step(action)
             score += reward
-            if reward == -1:
-                print("warn ", action)
-            agent.memory.stackMemory(state, action, reward, state_, done)
             state = state_            
-            env.draw()
         scores.append(score)
         movingAverageScore = np.mean(scores[-100:])
         print(f"Episode : {episode+1}, Score : {score:.0f}, Average: {movingAverageScore:.1f} Epsilon : {agent.epsilon}")

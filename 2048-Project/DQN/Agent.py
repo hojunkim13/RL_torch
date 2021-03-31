@@ -1,15 +1,14 @@
-import os, sys
-path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-sys.path.append(path.replace("\\2048-Project",""))
+import os
 from Network import DQNNetwork
-from Utils.ReplayBuffer import ReplayBuffer
+from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
 
 
+
 class Agent:
     def __init__(self, n_state, n_action, lr, gamma, mem_max,
-    epsilon_decay, epsilon_min, batch_size, learning_step, tau):
+    epsilon_decay, epsilon_min, decay_step, batch_size, tau):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.net_.eval()
@@ -19,14 +18,15 @@ class Agent:
         self.n_state = n_state
         self.n_action = n_action
         self.actionSpace = [action for action in range(n_action)]
-        self.epsilon_min = epsilon_min
-        self.epsilon_deacy = epsilon_decay
         self.epsilon = 1
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
+        self.lr_decay = 0.9
+        self.decay_step = decay_step
+        self.step = 0
         self.gamma = gamma
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(mem_max, n_state, n_action)
-        self.learning_step = learning_step
-        self.step = 0
+        self.memory = PrioritizedExperienceReplay(mem_max)
 
     def getAction(self, state, test_mode = False):
         if test_mode or self.epsilon < np.random.rand():
@@ -39,38 +39,71 @@ class Agent:
             action = np.random.choice(self.actionSpace)
             return action
             
+    def storeTransition(self, *transition):
+        s, a, r, s_, d = transition
+        s = torch.tensor(s).cuda().unsqueeze(0).float()
+        s_ = torch.tensor(s_).cuda().unsqueeze(0).float()
+        a = torch.tensor(a).cuda()
+        with torch.no_grad():
+            pred_value = self.net(s)[0][a]
+            target_value = r + self.gamma * torch.max(self.net_(s_),dim =1)[0] * (not d)
+            error = np.abs((target_value - pred_value).cpu().numpy())
+
+        self.memory.add(transition, error)
+
+
+    def adjsutHyperparam(self):
+        self.step += 1        
+        if self.step % self.decay_step != 0:
+            return
+
+        #epsilon decay
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        else:
+            self.epsilon = self.epsilon_min        
+        
+        #learning rate decay
+        lr = self.optimizer.param_groups[0]["lr"]
+        if lr > 1e-5:
+            self.optimizer.param_groups[0]["lr"] *= self.lr_decay
+        else:
+            self.optimizer.param_groups[0]["lr"] = 1e-5
 
     def learn(self):
-        if self.memory.mem_cntr <= self.batch_size:
-            self.step = 0 
-            return
-            
-        if self.step != self.learning_step:
+        if self.memory.tree.n_entries < 2000:
             return
         
-        S, A, R, S_, D = self.memory.getSample(self.batch_size)
-        S = torch.tensor(S, dtype = torch.float).cuda()
-        A = torch.tensor(A, dtype = torch.int64).cuda()
-        R = torch.tensor(R, dtype = torch.float).cuda()
-        S_ = torch.tensor(S_, dtype = torch.float).cuda()
-        D = torch.tensor(D, dtype = torch.bool).cuda()
+        self.adjsutHyperparam()
+
+        data, indice, is_weight = self.memory.sample(self.batch_size)
+        data = np.transpose(data)
+
+        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1,16,4,4)
+        A = torch.tensor(list(data[1]), dtype = torch.int64).cuda()
+        R = torch.tensor(list(data[2]), dtype = torch.float).cuda()
+        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1,16,4,4)
+        D = torch.tensor(list(data[4]), dtype = torch.bool).cuda()
         
         #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
-        value = torch.gather(self.net(S), dim= 1, index = A)
-        target_value = R + self.gamma * torch.max(self.net_(S_), dim = 1)[0].unsqueeze(-1) * ~D
+        value = torch.gather(self.net(S), dim= 1, index = A.unsqueeze(-1)).squeeze()
+        target_value = R + self.gamma * torch.max(self.net_(S_), dim = 1)[0]* ~D
         
+        
+        errors = target_value - value
+        errors = errors.detach().cpu().numpy()
+        
+        for index, error in zip(indice, errors):
+            self.memory.update(index, error)
+
         self.optimizer.zero_grad()
         loss = torch.nn.functional.smooth_l1_loss(target_value, value)
-        loss.backward()
+        total_loss = (torch.tensor(is_weight).cuda() * loss).mean()
+        total_loss.backward()
         for param in self.net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        self.softUpdate()
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_deacy
-        else:
-            self.epsilon = self.epsilon_min
-        self.step = 0
+
     
     def softUpdate(self):
         for target_param, local_param in zip(self.net_.parameters(), self.net.parameters()):
