@@ -1,18 +1,14 @@
 import gym
 from torchvision import transforms
-from collections import deque
-import numpy as np
 
 
 class Environment:
     def __init__(self):
         self.env = gym.make('CarRacing-v0')
-        self.state_dim = (3,96,96)
-        self.action_dim = 3
         self.transforms = transforms.Compose([transforms.ToTensor(),
                                             transforms.Grayscale(),
                                             transforms.Normalize([0.5],[0.5])
-                                            ])
+                                            ])                                        
 
     def preprocessing(self,state):
         state = self.transforms(state.copy())
@@ -20,13 +16,14 @@ class Environment:
 
     def step(self, action, render = False):
         reward = 0
-        action = (action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
-        for _ in range(4):
+        for _ in range(8):
             if render:
                 self.env.render()
             state, tmp_reward, done, info = self.env.step(action)
             reward += tmp_reward
-        reward /= 4
+            if done:
+                break
+        reward /= 8
         new_state = self.preprocessing(state)
         state_difference = new_state - self.old_state
         self.old_state = new_state

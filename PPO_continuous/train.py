@@ -11,12 +11,12 @@ action_dim = 3
 
 save_cycle = 1
 load = False
-render = True
+render = False
 n_episode = 10000
-lr = 1e-4
+lr = 1e-3
 gamma = 0.99
 lmbda = 0.95
-epsilon = 0.15
+epsilon = 0.2
 buffer_size = 1000
 batch_size = 512
 k_epochs = 10
@@ -41,8 +41,8 @@ if __name__ == "__main__":
             state = state_
             agent.learn()
         env.close()
-        if (e+1) % save_cycle ==0:
-            agent.save(path)            
+        # if (e+1) % save_cycle ==0:
+        #     agent.save(path)            
         score_list.append(score)
         avg_score = np.mean(score_list[-100:])
         avg_score_list.append(avg_score)

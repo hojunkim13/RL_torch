@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from Network_1D import DQNNetwork
+from Network_2D import DQNNetwork
 from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
@@ -20,7 +20,6 @@ class Agent:
         self.tau = 1e-3
         self.gamma = gamma
         self.batch_size = batch_size
-        #self.memory = Memory(mem_max)
         self.memory = PrioritizedExperienceReplay(mem_max)
 
     def getAction(self, state, test_mode = False):
@@ -69,8 +68,7 @@ class Agent:
         for idx in range(self.batch_size):
             index = indice[idx]
             self.memory.update(index, errors[idx])
-        
-        
+                
         self.optimizer.zero_grad()        
         loss = torch.nn.functional.mse_loss(target_value, value)
         loss = (torch.tensor(is_weights).float().cuda() * loss).mean()

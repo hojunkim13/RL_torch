@@ -9,7 +9,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 
 class Agent:
-    def __init__(self, state_dim, action_dim, lr, epsilon, gamma, lmbda,  buffer_size,batch_size, k_epochs):
+    def __init__(self, state_dim, action_dim, lr, epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs):
         self.net = ActorCritic(state_dim, action_dim)
         self.optimizer = Adam(self.net.parameters(), lr=lr)
         self.epsilon = epsilon
