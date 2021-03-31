@@ -32,7 +32,7 @@ class Agent:
             action = np.random.choice(self.actionSpace)
             return action
 
-    def storeTransition(self, transition):
+    def storeTransition(self, *transition):
         state, action, reward, state_, done = transition
         with torch.no_grad():
             state = torch.tensor(state, dtype = torch.float).unsqueeze(0).cuda()
@@ -54,10 +54,10 @@ class Agent:
         data, indice, is_weights = self.memory.sample(self.batch_size)
         data = np.transpose(data)
 
-        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda()
+        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1, *self.n_state)
         A = torch.tensor(list(data[1]), dtype = torch.int64).cuda()
         R = torch.tensor(list(data[2]), dtype = torch.float).cuda()
-        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda()
+        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1, *self.n_state)
         D = torch.tensor(list(data[4]), dtype = torch.bool).cuda()
         
         #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
