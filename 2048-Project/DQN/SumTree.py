@@ -24,10 +24,12 @@ class SumTree:
         if left >= len(self.tree):
             return idx
         
-        if s < self.tree[left]:
+        left_val = np.double(self.tree[left])
+        s = np.double(s)
+        if (s-left_val) < np.double(1e-6):
             return self._retrieve(left, s)
         else:
-            return self._retrieve(right, s - self.tree[left])
+            return self._retrieve(right, s - left_val)
 
     def total(self):
         return self.tree[0]
@@ -57,5 +59,6 @@ class SumTree:
     def get(self, s):
         idx = self._retrieve(0, s)
         dataIdx = idx - self.capacity + 1
-
+        if self.data[dataIdx] == 0:
+            self._retrieve(0,s)
         return (idx, self.tree[idx], self.data[dataIdx])

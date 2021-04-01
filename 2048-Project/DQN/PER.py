@@ -27,16 +27,21 @@ class PrioritizedExperienceReplay:
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])
 
         for i in range(batch_size):
-            s = np.random.uniform(segment * i, segment * (i+1))
-            (idx, priority, data) = self.tree.get(s)
+            a = segment * i
+            b = segment * (i+1)
+            data = 0
+            while data == 0:
+                s = np.random.uniform(a,b)
+                (idx, priority, data) = self.tree.get(s)
             indice.append(idx)
-            priorities.append(priority)
+            priorities.append(np.clip(priority, 1e-6, 1-1e-6))
             datas.append(data)
 
         sampling_probabilities = priorities / self.tree.total()
         is_weight = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
         is_weight /= is_weight.max()
-        
+        datas = np.array(datas, dtype= object)
+
         return datas, indice, is_weight
 
     def update(self, idx, error):

@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from Network_1D import DQNNetwork
+from Network_2D import DQNNetwork
 from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
@@ -20,7 +20,6 @@ class Agent:
         self.tau = 1e-3
         self.gamma = gamma
         self.batch_size = batch_size
-        #self.memory = Memory(mem_max)
         self.memory = PrioritizedExperienceReplay(mem_max)
 
     def getAction(self, state, test_mode = False):
@@ -33,7 +32,7 @@ class Agent:
             action = np.random.choice(self.actionSpace)
             return action
 
-    def storeTransition(self, transition):
+    def storeTransition(self, *transition):
         state, action, reward, state_, done = transition
         with torch.no_grad():
             state = torch.tensor(state, dtype = torch.float).unsqueeze(0).cuda()
@@ -55,10 +54,10 @@ class Agent:
         data, indice, is_weights = self.memory.sample(self.batch_size)
         data = np.transpose(data)
 
-        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda()
+        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1, *self.n_state)
         A = torch.tensor(list(data[1]), dtype = torch.int64).cuda()
         R = torch.tensor(list(data[2]), dtype = torch.float).cuda()
-        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda()
+        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1, *self.n_state)
         D = torch.tensor(list(data[4]), dtype = torch.bool).cuda()
         
         #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
@@ -69,8 +68,7 @@ class Agent:
         for idx in range(self.batch_size):
             index = indice[idx]
             self.memory.update(index, errors[idx])
-        
-        
+                
         self.optimizer.zero_grad()        
         loss = torch.nn.functional.mse_loss(target_value, value)
         loss = (torch.tensor(is_weights).float().cuda() * loss).mean()
