@@ -23,7 +23,6 @@ class Environment:
             reward += tmp_reward
             if done:
                 break
-        reward /= 8
         new_state = self.preprocessing(state)
         state_difference = new_state - self.old_state
         self.old_state = new_state
