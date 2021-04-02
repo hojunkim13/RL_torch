@@ -30,10 +30,11 @@ pygame.display.set_icon(Game2048.icon(32))
 if __name__ == "__main__":
     env = Game2048_wrapper(screen, p1, p2)
     agent = Agent(n_state, n_action, learing_rate, gamma, replay_memory_buffer_size,
-                epsilon_decay,epsilon_min, batch_size, gamma, gamma)
+                epsilon_decay,epsilon_min, batch_size, gamma, gamma, env)
     agent.net.eval()
     agent.net_.eval()
-    agent.load(env_name)
+    agent.load(env_name, "11000ep")
+    agent.epsilon = 0.1
     n_episode = 1
     scores = []
     env.draw()
@@ -42,7 +43,7 @@ if __name__ == "__main__":
         done = False
         score = 0
         while not done:
-            action = agent.getAction(state, True)
+            action, _ = agent.getAction(state)
             state_, reward, done = env.step(action)
             score += reward
             state = state_            

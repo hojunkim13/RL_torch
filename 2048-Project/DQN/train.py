@@ -2,7 +2,7 @@ from _2048 import Game2048
 import os, sys
 path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(path)
-from Env import Game2048_wrapper, move
+from Env import Game2048_wrapper
 import numpy as np
 import pygame
 from Agent import Agent
@@ -12,16 +12,16 @@ env_name = "2048"
 load = False
 n_state = (16,4,4)
 n_action = 4
-learing_rate = 1e-4
+learing_rate = 5e-4
 gamma = 0.9
 replay_memory_buffer_size = 100000
 epsilon_decay = 0.95
 epsilon_decay_step = 2500
-epsilon_min = 0.1
+epsilon_min = 0.05
 batch_size = 256
 tau = 1e-3
 
-n_episode = 10000
+n_episode = 1000
 
 
 p1 = os.path.join("save", '2048_.score')
@@ -34,11 +34,10 @@ pygame.display.set_icon(Game2048.icon(32))
 if __name__ == "__main__":
     env = Game2048_wrapper(screen, p1, p2)
     agent = Agent(n_state, n_action, learing_rate, gamma, replay_memory_buffer_size,
-                epsilon_decay,epsilon_min,epsilon_decay_step, batch_size, tau)
+                epsilon_decay,epsilon_min,epsilon_decay_step, batch_size, tau, env)
 
-    agent.load(env_name)
-    agent.epsilon = 0.1
-    agent.optimizer.param_groups[0]["lr"] = 1e-5
+    #agent.load(env_name)
+    #agent.epsilon = 0.5
     
     scores = []
     env.draw()
@@ -48,7 +47,8 @@ if __name__ == "__main__":
         score = 0
         step = 0
         while not done:
-            action = agent.getAction(state)
+            action, _ = agent.getAction(state)
+            #action = agent.simulation(state = state, depth = 5)
             state_, reward, done = env.step(action)
             score += reward
             agent.storeTransition(state, action, reward, state_, done)
