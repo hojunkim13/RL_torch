@@ -4,16 +4,18 @@ import gym
 import numpy as np
 from PongWrapper import Environment
 
-#env_name = 'LunarLander-v2'
 env_name = 'Pong-v0'
 env = Environment()
-# env_name = "CartPole-v1"
-# env = gym.make(env_name)
 state_dim = (1,84,84)
 action_dim = 3
 
-n_episode = 1000
-load = False
+# env_name = "LunarLander-v2"
+# env = gym.make(env_name)
+# state_dim=8
+# action_dim =4
+
+n_episode = 100000
+load = True
 render = False
 save_freq = 100
 gamma = 0.99
@@ -38,8 +40,11 @@ if __name__ == "__main__":
         score = 0
         state = env.reset()
         while not done:
+            if render:
+                env.render()
             action, log_prob = agent.get_action(state)
-            state_, reward, done, _ = env.step(action + 1, render)
+            state_, reward, done, _ = env.step(action + 1, False)
+            
             #state_, reward, done, _ = env.step(action)
             score += reward
             agent.store(state, action, reward, state_, done, log_prob)

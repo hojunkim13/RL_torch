@@ -1,4 +1,4 @@
-from Network import ActorCritic
+from Network import Actor, Critic
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,8 +8,10 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 class Agent:
     def __init__(self, state_dim, action_dim, lr, gamma, lmbda, epsilon,
                  time_step, K_epochs, batch_size):
-        self.net = ActorCritic(state_dim, action_dim)        
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr)
+        self.actor = Actor(state_dim, action_dim)        
+        self.critic = Critic(state_dim, action_dim)        
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr)
         self.gamma = gamma
         self.lmbda = lmbda
         self.epsilon = epsilon
@@ -39,11 +41,11 @@ class Agent:
             state = torch.Tensor(state).view(-1, *self.state_dim).cuda()
         else:
             state = torch.Tensor(state).view(-1, self.state_dim).cuda()
-
-        policy, _ = self.net(state)
-        policy = policy[0].detach().cpu().numpy()
-        action = np.random.choice(self.action_space, p = policy)
-        prob = policy[action]
+        with torch.no_grad():
+            policy = self.actor(state)
+            policy = policy[0].detach().cpu().numpy()
+            action = np.random.choice(self.action_space, p = policy)
+            prob = policy[action]
         return action, prob
 
     def store(self, s, a, r, s_, d, a_prob):
@@ -58,13 +60,14 @@ class Agent:
 
     def get_advantage(self, S, R, S_, D):
         with torch.no_grad():
-            td_target = R + self.gamma * self.net(S_)[1] * ~D
-            delta = td_target - self.net(S)[1]
+            td_target = R + self.gamma * self.critic(S_) * ~D
+            delta = td_target - self.critic(S)
         advantage = torch.zeros_like(delta)
         running_add = 0
         for i in reversed(range(len(delta))):
             advantage[i] = delta[i] + self.gamma * self.lmbda * running_add
-            running_add = advantage[i]        
+            running_add = advantage[i]
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         return advantage, td_target
 
     def learn(self):
@@ -81,28 +84,34 @@ class Agent:
 
         for i in range(self.K_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(self.time_step)), self.batch_size, False):            
-                self.optimizer.zero_grad()            
-                policy, td = self.net(S[index])
+                
+                policy = self.actor(S[index])
+                td = self.critic(S[index])
                 
                 prob_new = policy.gather(1, A[index])
-                
-                
+                                
                 ratio = torch.exp(torch.log(prob_new) - torch.log(P[index]))
                 
                 surrogate1 = ratio * advantage[index]
                 surrogate2 = torch.clip(ratio, 1-self.epsilon, 1+self.epsilon) * advantage[index]
-                actor_loss = -torch.min(surrogate1, surrogate2).mean()
                 
-                critic_loss = F.smooth_l1_loss(td, td_target.detach()[index])
-                
-                (actor_loss + critic_loss).backward()
-                self.optimizer.step()            
+                actor_loss = -torch.min(surrogate1, surrogate2).mean()                
+                critic_loss = F.smooth_l1_loss(td, td_target.detach()[index])                
+                entropy_loss = torch.distributions.Categorical(policy).entropy().mean()
+                total_loss = 0.5 * critic_loss + actor_loss - 0.01 * entropy_loss
+                self.actor_optimizer.zero_grad()
+                self.critic_optimizer.zero_grad()
+                total_loss.backward()
+                self.actor_optimizer.step()            
+                self.critic_optimizer.step()            
         self.mntr = 0
     
     
     def save(self, path):
-        torch.save(self.net.state_dict(), path + '.pt')
+        torch.save(self.actor.state_dict(), path + '_a.pt')
+        torch.save(self.critic.state_dict(), path + '_c.pt')
         
 
     def load(self, path):        
-        self.net.load_state_dict(torch.load(path + '.pt'))
+        self.actor.load_state_dict(torch.load(path + '_a.pt'))
+        self.critic.load_state_dict(torch.load(path + '_c.pt'))
