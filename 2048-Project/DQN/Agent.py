@@ -3,12 +3,11 @@ from Network import DQNNetwork
 from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
-from Env import move
 
 
 class Agent:
     def __init__(self, n_state, n_action, lr, gamma, mem_max,
-    epsilon_decay, epsilon_min, decay_step, batch_size, tau, env):
+    epsilon_decay, epsilon_min, decay_step, batch_size, tau):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.net_.eval()
@@ -22,31 +21,11 @@ class Agent:
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.decay_step = decay_step
-        self.step = 0
+        self.decay_cntr = 0
         self.gamma = gamma
         self.batch_size = batch_size
         self.memory = PrioritizedExperienceReplay(mem_max)
-        self.simulator = env
 
-
-    def simulation(self, state, depth):
-        values = [0,0,0,0]
-        grid = self.simulator.state2grid(state)
-        for action in self.actionSpace:
-            cntr = 0
-            for _ in range(depth):
-                if cntr == 0:
-                    new_grid, moved, _ = move(grid, action)            
-                else:
-                    new_grid, moved, _ = move(new_grid, new_action) 
-                cntr += 1
-                state = self.simulator.getState(grid = new_grid)
-                new_action, value = self.getAction(state)
-                values[action] += value
-        best_action = np.argmax(values)
-        return best_action
-
-            
 
     def getAction(self, state, test_mode = False):
         if test_mode or self.epsilon < np.random.rand():
@@ -77,11 +56,11 @@ class Agent:
         self.memory.add(transition, error)
 
 
-    def adjsutHyperparam(self):
-        self.step += 1        
-        if self.step % self.decay_step != 0:
+    def adjustHyperparam(self):
+        self.decay_cntr += 1        
+        if self.decay_cntr % self.decay_step != 0:
             return
-
+        self.decay_cntr = 0
         #epsilon decay
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -92,15 +71,15 @@ class Agent:
         if self.memory.tree.n_entries < 2000:
             return
         
-        self.adjsutHyperparam()
+        self.adjustHyperparam()
 
         data, indice, is_weight = self.memory.sample(self.batch_size)
         data = np.transpose(data)
 
-        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1,16,4,4)
+        S = torch.tensor(np.vstack(data[0]), dtype = torch.float).cuda().view(-1,*self.n_state)
         A = torch.tensor(list(data[1]), dtype = torch.int64).cuda()
         R = torch.tensor(list(data[2]), dtype = torch.float).cuda()
-        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1,16,4,4)
+        S_ = torch.tensor(np.vstack(data[3]), dtype = torch.float).cuda().view(-1,*self.n_state)
         D = torch.tensor(list(data[4]), dtype = torch.bool).cuda()
         
         #Bellman Optimization Equation : Q(s, a) <- Reward + max Q(s') * ~done        
@@ -114,9 +93,9 @@ class Agent:
         for index, error in zip(indice, errors):
             self.memory.update(index, error)
 
-        self.optimizer.zero_grad()
         loss = torch.nn.functional.smooth_l1_loss(target_value, value)
         total_loss = (torch.tensor(is_weight).cuda() * loss).mean()
+        self.optimizer.zero_grad()
         total_loss.backward()
         for param in self.net.parameters():
             param.grad.data.clamp_(-1, 1)
@@ -133,13 +112,13 @@ class Agent:
 
     def load(self, env_name, hint = ""):
         try:
-            for file_name in os.listdir("./2048-Project/model"):
+            for file_name in os.listdir("./data/model/"):
                 if env_name in file_name and "DQN" in file_name:
                     if hint == "":
-                        weight_dict = torch.load("./2048-Project/model/" + file_name)
+                        weight_dict = torch.load("./data/model/" + file_name)
                     else:
                         if hint in file_name:
-                            weight_dict = torch.load("./2048-Project/model/" + file_name)
+                            weight_dict = torch.load("./data/model/" + file_name)
         
             self.net.load_state_dict(weight_dict)
             self.net_.load_state_dict(weight_dict)
@@ -149,7 +128,7 @@ class Agent:
             print("Can't found model weights")
 
     def save(self, env_name):
-        os.makedirs("./2048-Project/model", exist_ok=True)
-        file_name = f"./2048-Project/model/{env_name}_DQN.pt"
+        os.makedirs("./data/model/", exist_ok=True)
+        file_name = f"./data/model/{env_name}_DQN.pt"
         torch.save(self.net_.state_dict(), file_name)
         
