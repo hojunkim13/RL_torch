@@ -3,12 +3,12 @@ from Network import DQNNetwork
 from PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
-
+from Env import move
 
 
 class Agent:
     def __init__(self, n_state, n_action, lr, gamma, mem_max,
-    epsilon_decay, epsilon_min, decay_step, batch_size, tau):
+    epsilon_decay, epsilon_min, decay_step, batch_size, tau, env):
         self.net = DQNNetwork(n_state, n_action)
         self.net_ = DQNNetwork(n_state, n_action)
         self.net_.eval()
@@ -21,23 +21,48 @@ class Agent:
         self.epsilon = 1
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
-        self.lr_decay = 0.9
         self.decay_step = decay_step
         self.step = 0
         self.gamma = gamma
         self.batch_size = batch_size
         self.memory = PrioritizedExperienceReplay(mem_max)
+        self.simulator = env
+
+
+    def simulation(self, state, depth):
+        values = [0,0,0,0]
+        grid = self.simulator.state2grid(state)
+        for action in self.actionSpace:
+            cntr = 0
+            for _ in range(depth):
+                if cntr == 0:
+                    new_grid, moved, _ = move(grid, action)            
+                else:
+                    new_grid, moved, _ = move(new_grid, new_action) 
+                cntr += 1
+                state = self.simulator.getState(grid = new_grid)
+                new_action, value = self.getAction(state)
+                values[action] += value
+        best_action = np.argmax(values)
+        return best_action
+
+            
 
     def getAction(self, state, test_mode = False):
         if test_mode or self.epsilon < np.random.rand():
             with torch.no_grad():
                 state = torch.tensor(state, dtype = torch.float32).cuda().unsqueeze(0)
                 value = self.net(state)[0]
-            action = torch.argmax(value)
-            return action.item()
+            action = torch.argmax(value).item()
+            value = value.cpu().numpy()[action]
+            return action, value
         else:
             action = np.random.choice(self.actionSpace)
-            return action
+            with torch.no_grad():
+                state = torch.tensor(state, dtype = torch.float32).cuda().unsqueeze(0)
+                value = self.net(state)[0]
+                value = value.cpu().numpy()[action]
+            return action, value
             
     def storeTransition(self, *transition):
         s, a, r, s_, d = transition
@@ -63,13 +88,6 @@ class Agent:
         else:
             self.epsilon = self.epsilon_min        
         
-        #learning rate decay
-        lr = self.optimizer.param_groups[0]["lr"]
-        if lr > 1e-5:
-            self.optimizer.param_groups[0]["lr"] *= self.lr_decay
-        else:
-            self.optimizer.param_groups[0]["lr"] = 1e-5
-
     def learn(self):
         if self.memory.tree.n_entries < 2000:
             return
@@ -113,12 +131,16 @@ class Agent:
         weight_dict = self.net.state_dict()
         self.net_.load_state_dict(weight_dict)
 
-    def load(self, env_name):
+    def load(self, env_name, hint = ""):
         try:
             for file_name in os.listdir("./2048-Project/model"):
                 if env_name in file_name and "DQN" in file_name:
-                    weight_dict = torch.load("./2048-Project/model/" + file_name)
-                    break
+                    if hint == "":
+                        weight_dict = torch.load("./2048-Project/model/" + file_name)
+                    else:
+                        if hint in file_name:
+                            weight_dict = torch.load("./2048-Project/model/" + file_name)
+        
             self.net.load_state_dict(weight_dict)
             self.net_.load_state_dict(weight_dict)
             self.epsilon = self.epsilon_min
