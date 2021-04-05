@@ -19,13 +19,12 @@ class Environment:
         return state.unsqueeze(0)
 
     def step(self, action, render = False):
-        
-        
         if render:
             self.render()
         state, reward, done, info = self.env.step(action)
         state = self.preprocessing(state)
-        state_difference = state - self.old_state  
+        state_difference = state - self.old_state
+        self.old_state = state
         return state_difference, reward, done, info
 
     def reset(self):
