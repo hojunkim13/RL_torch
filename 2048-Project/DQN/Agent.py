@@ -68,7 +68,7 @@ class Agent:
             self.epsilon = self.epsilon_min        
         
     def learn(self):
-        if self.memory.tree.n_entries < 2000:
+        if self.memory.tree.n_entries < 2500:
             return
         
         self.adjustHyperparam()

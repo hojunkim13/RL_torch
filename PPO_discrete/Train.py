@@ -6,13 +6,13 @@ env_name = 'Pong-v0'
 env = Environment()
 state_dim = (1,84,84)
 action_dim = 3
-n_episode = 100000
+n_episode = 10000
 load = True
 render = False
 save_freq = 100
 gamma = 0.99
 lmbda = 0.95
-lr = 1e-4
+lr = 1e-5
 time_step = 1024
 K_epochs = 10
 batch_size = 64
@@ -47,4 +47,7 @@ if __name__ == "__main__":
         average_score = np.mean(score_list[-100:])
         mas_list.append(average_score)
         print(f'[{e+1}/{n_episode}] [Score: {score:.1f}] [Average Score: {average_score:.1f}]')
+        if average_score >= 19:
+            print("Early stopping!")
+            break
 

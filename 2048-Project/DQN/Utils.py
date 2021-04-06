@@ -42,6 +42,7 @@ def move(grid, action):
         grid = _spawn_new(grid)
     return grid, moved, sum
 
+
 def _spawn_new(grid):
     """Spawn some new tiles."""
     free = free_cells(grid)
@@ -57,11 +58,11 @@ def state2grid(state):
     return grid
 
 def preprocessing(grid):
-    legal_action_plane = np.zeros((4,4,4))
+    legal_action_plane = np.ones((4,4,4))
     for action in range(4):
         _, moved, _ = move(grid, action)
-        if moved:
-            legal_action_plane[:,:,action] = 1
+        if not moved:
+            legal_action_plane[:,:,action] = 0
 
     state = np.array(grid).reshape(-1)
     state = np.clip(state, 1, None)
