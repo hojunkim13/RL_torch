@@ -1,9 +1,9 @@
 from ActorCritic import ActorCritic
 import torch
 from torch.optim import Adam
-import numpy as np
 import torch.nn.functional as F
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+
 
 
 
@@ -29,8 +29,7 @@ class Agent:
         
     def get_action(self, state):
         with torch.no_grad():
-            alpha, beta = self.net(state)[0]
-        dist = torch.distributions.Beta(alpha, beta)
+            dist = self.net(state)[0]
         action = dist.sample()[0]
         log_prob = dist.log_prob(action)[0]
         return action.detach().cpu().numpy(), log_prob.detach().cpu().numpy()
@@ -59,20 +58,21 @@ class Agent:
 
         for i in range(self.k_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(self.buffer_size)), self.batch_size, False):
-                (alpha, beta), value = self.net(S[index])                
-                dist = torch.distributions.Beta(alpha, beta)
+                dist, value = self.net(S[index])                                
                 log_prob_new = dist.log_prob(A[index])
                 ratio = torch.exp(log_prob_new - log_prob_old[index])
                 surrogate1 = ratio * advantage[index]
                 surrogate2 = torch.clip(ratio, 1-self.epsilon, 1+self.epsilon) * advantage[index]
                 a_loss = -torch.min(surrogate1, surrogate2).mean()
                 v_loss = F.smooth_l1_loss(value, td_target[index])
+                entropy_loss = dist.entropy().mean()
+                total_loss = a_loss + 0.5 * v_loss - 0.01 * entropy_loss
                 
                 self.optimizer.zero_grad()
-                (a_loss + v_loss).backward()
+                total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
                 self.optimizer.step()
-                self.mntr = 0
+        self.mntr = 0
 
     def get_advantage(self, S, R, S_, D):
         with torch.no_grad():

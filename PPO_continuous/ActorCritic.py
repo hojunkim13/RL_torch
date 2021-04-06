@@ -1,31 +1,27 @@
-import torch
 import torch.nn as nn
-
+from torch.distributions.normal import Normal
 
 class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
-                                    #4, 96, 96
-        self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],16,4,2,1),
+                                    #84 84
+        self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],32,8,4,0),
                                    nn.ReLU(),
-                                   # 48 48 
-                                   nn.Conv2d(16,32,4,2,1),
+                                   # 20 
+                                   nn.Conv2d(32,64,4,4,2),
                                    nn.ReLU(),
-                                   # 24 24
-                                   nn.Conv2d(32,64,4,2,1),
-                                   nn.ReLU(),
-                                   # 12 12
-                                   nn.Conv2d(64,128,3,3,0),
-                                   nn.ReLU(),
+                                   # 6
+                                   nn.Conv2d(64,128,4,2,2),
+                                   nn.ReLU(),                                
                                    # 4 4
                                    nn.Conv2d(128,256,4,1,0),
                                    nn.ReLU(),
                                    nn.Flatten(),
                                    )
-        self.fc_alpha = nn.Sequential(nn.Linear(256, action_dim),
-                                   nn.Softplus())
+        self.fc_mean = nn.Sequential(nn.Linear(256, action_dim),
+                                   nn.Tanh())
 
-        self.fc_beta = nn.Sequential(nn.Linear(256, action_dim),
+        self.fc_std = nn.Sequential(nn.Linear(256, action_dim),
                                     nn.Softplus())
         self.value = nn.Sequential(nn.Linear(256, 100),
                                    nn.ReLU(),
@@ -35,14 +31,14 @@ class ActorCritic(nn.Module):
 
     @staticmethod
     def _weights_init(m):
-        if isinstance(m, nn.Conv2d):
+        if type(m) in (nn.Conv2d, nn.Linear):
             nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
             nn.init.constant_(m.bias, 0.1)
 
     def forward(self, state):
         x = self.fcnet(state)
-        alpha = self.fc_alpha(x) + 1
-        beta = self.fc_beta(x) + 1
+        mean = self.fc_mean(x)
+        std = self.fc_std(x)
         value = self.value(x)
-        return (alpha, beta), value
+        return Normal(mean, std), value
     
