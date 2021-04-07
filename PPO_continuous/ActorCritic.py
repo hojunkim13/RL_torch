@@ -1,5 +1,4 @@
 import torch.nn as nn
-from torch.distributions.normal import Normal
 
 class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
@@ -40,5 +39,5 @@ class ActorCritic(nn.Module):
         mean = self.fc_mean(x)
         std = self.fc_std(x)
         value = self.value(x)
-        return Normal(mean, std), value
+        return (mean, std), value
     

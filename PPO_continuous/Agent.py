@@ -3,7 +3,7 @@ import torch
 from torch.optim import Adam
 import torch.nn.functional as F
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
-
+from torch.distributions.normal import Normal
 
 
 
@@ -29,7 +29,9 @@ class Agent:
         
     def get_action(self, state):
         with torch.no_grad():
-            dist = self.net(state)[0]
+            (mean,std), value = self.net(state)
+            std = torch.sqrt(std)
+            dist = Normal(mean, std)
         action = dist.sample()[0]
         log_prob = dist.log_prob(action)[0]
         return action.detach().cpu().numpy(), log_prob.detach().cpu().numpy()
@@ -58,7 +60,9 @@ class Agent:
 
         for i in range(self.k_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(self.buffer_size)), self.batch_size, False):
-                dist, value = self.net(S[index])                                
+                (mean,std), value = self.net(S[index])
+                std = torch.sqrt(std)
+                dist = Normal(mean, std)
                 log_prob_new = dist.log_prob(A[index])
                 ratio = torch.exp(log_prob_new - log_prob_old[index])
                 surrogate1 = ratio * advantage[index]

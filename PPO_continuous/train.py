@@ -18,8 +18,8 @@ lr = 5e-4
 gamma = 0.99
 lmbda = 0.95
 epsilon = 0.2
-buffer_size = 256
-batch_size = 64
+buffer_size = 1024
+batch_size = 128
 k_epochs = 10
 path = './model/' + env_name
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
@@ -43,6 +43,7 @@ if __name__ == "__main__":
             state = state_        
         if (e+1) % save_cycle ==0:
             agent.save(path)            
+        env.close()
         score_list.append(score)
         avg_score = np.mean(score_list[-100:])
         avg_score_list.append(avg_score)
