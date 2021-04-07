@@ -1,6 +1,8 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import numpy as np
-from Agent import Agent
-from Utils import *
+from DQN.Agent import Agent
+from Environment.Utils import *
 
 
 env_name = "2048"
@@ -50,7 +52,6 @@ if __name__ == "__main__":
         
         if (episode + 1) % 100 == 0:
             agent.save(env_name)
-        lr = agent.optimizer.param_groups[0]["lr"]
         print(f"Episode : {episode+1}, Score : {score:.0f}, Average: {movingAverageScore:.1f} Epsilon : {agent.epsilon:.3f}, Memory : {agent.memory.tree.n_entries}, Max : {max_tile}")
     env.close()
         

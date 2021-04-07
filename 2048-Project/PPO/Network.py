@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 
@@ -14,10 +13,8 @@ class Actor(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 512, 3, 1, 1),
             nn.ReLU(),
-            nn.Conv2d(512, 1024, 3, 1, 1),
-            nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(1024 * 4 * 4, action_dim),
+            nn.Linear(512 * 4 * 4, action_dim),
             nn.Softmax(1)
         )
         self.cuda()
@@ -39,10 +36,8 @@ class Critic(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 512, 3, 1, 1),
             nn.ReLU(),
-            nn.Conv2d(512, 1024, 3, 1, 1),
-            nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(1024 * 4 * 4, 1),
+            nn.Linear(512 * 4 * 4, 1),
         )
         self.cuda()
 

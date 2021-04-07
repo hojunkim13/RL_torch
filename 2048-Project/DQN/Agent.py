@@ -1,6 +1,7 @@
-import os
-from Network import DQNNetwork
-from PER import PrioritizedExperienceReplay
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from DQN.Network import DQNNetwork
+from DQN.PER import PrioritizedExperienceReplay
 import torch
 import numpy as np
 
