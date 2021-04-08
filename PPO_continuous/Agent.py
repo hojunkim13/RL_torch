@@ -30,7 +30,6 @@ class Agent:
     def get_action(self, state):
         with torch.no_grad():
             (mean,std), value = self.net(state)
-            std = torch.sqrt(std)
             dist = Normal(mean, std)
         action = dist.sample()[0]
         log_prob = dist.log_prob(action)[0]
@@ -60,8 +59,7 @@ class Agent:
 
         for i in range(self.k_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(self.buffer_size)), self.batch_size, False):
-                (mean,std), value = self.net(S[index])
-                std = torch.sqrt(std)
+                (mean,std), value = self.net(S[index])            
                 dist = Normal(mean, std)
                 log_prob_new = dist.log_prob(A[index])
                 ratio = torch.exp(log_prob_new - log_prob_old[index])
@@ -70,6 +68,7 @@ class Agent:
                 a_loss = -torch.min(surrogate1, surrogate2).mean()
                 v_loss = F.smooth_l1_loss(value, td_target[index])
                 entropy_loss = dist.entropy().mean()
+                
                 total_loss = a_loss + 0.5 * v_loss - 0.01 * entropy_loss
                 
                 self.optimizer.zero_grad()

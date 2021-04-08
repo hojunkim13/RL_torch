@@ -20,7 +20,7 @@ class Environment:
         env action space : (-1, 0, 0 ~ (+1, +1, +1)
         So, We have to adjust input action
         """
-        action = (action + [0, +1, +1]) * [1, 0.5, 0.5]
+        #action = (action + [0, +1, +1]) * [1, 0.5, 0.5]
 
         reward = 0
         for _ in range(8):

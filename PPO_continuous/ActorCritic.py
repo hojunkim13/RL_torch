@@ -1,7 +1,8 @@
+import torch
 import torch.nn as nn
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, std = 0.0):
         super(ActorCritic, self).__init__()
                                     #84 84
         self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],32,8,4,0),
@@ -17,11 +18,10 @@ class ActorCritic(nn.Module):
                                    nn.ReLU(),
                                    nn.Flatten(),
                                    )
-        self.fc_mean = nn.Sequential(nn.Linear(256, action_dim),
-                                   nn.Tanh())
+        self.fc_mean = nn.Linear(256, action_dim)
+                                   
 
-        self.fc_std = nn.Sequential(nn.Linear(256, action_dim),
-                                    nn.Softplus())
+        self.log_std = nn.Parameter(torch.ones(1, action_dim) * std)
         self.value = nn.Sequential(nn.Linear(256, 100),
                                    nn.ReLU(),
                                    nn.Linear(100, 1))
@@ -33,11 +33,12 @@ class ActorCritic(nn.Module):
         if type(m) in (nn.Conv2d, nn.Linear):
             nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
             nn.init.constant_(m.bias, 0.1)
+        
 
     def forward(self, state):
         x = self.fcnet(state)
-        mean = self.fc_mean(x)
-        std = self.fc_std(x)
         value = self.value(x)
+        mean = self.fc_mean(x)
+        std = self.log_std.exp().expand_as(mean)
         return (mean, std), value
     
