@@ -14,13 +14,13 @@ save_cycle = 100
 load = False
 render = False
 n_episode = 10000
-lr = 1e-4
+lr = 3e-4
 gamma = 0.9
 lmbda = 0.95
 epsilon = 0.2
-buffer_size = 1024
-batch_size = 128
-k_epochs = 10
+buffer_size = 512
+batch_size = 256
+k_epochs = 2
 path = './model/' + env_name
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
 
@@ -37,6 +37,8 @@ if __name__ == "__main__":
         while not done:
             action, log_prob = agent.get_action(state.cuda())            
             state_, reward, done, _ = env.step(action, render)            
+            if done:
+                reward = -100
             score += reward
             agent.store((state,action,log_prob,reward,state_,done))
             agent.learn()
@@ -47,7 +49,8 @@ if __name__ == "__main__":
         score_list.append(score)
         avg_score = np.mean(score_list[-100:])
         avg_score_list.append(avg_score)
-        print(f'[{e+1}/{n_episode}] [Score: {score:.1f}], [Average Score: {avg_score:.1f}]')
+        lr = agent.optimizer.param_groups[0]["lr"]
+        print(f'[{e+1}/{n_episode}] [Score: {score:.1f}], [Average Score: {avg_score:.1f}], [Learning Rate : {lr}]')
     plt.plot(avg_score_list)
     plt.xlabel('Episode')
     plt.ylabel('Moving Average Score')

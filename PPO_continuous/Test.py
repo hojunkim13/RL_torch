@@ -34,8 +34,8 @@ if __name__ == "__main__":
         state = env.reset()
         while not done:
             action, _ = agent.get_action(state.cuda())            
-            state_, reward, done, _ = env.step(action, render)            
-            score += reward            
+            state_, reward, done, _ = env.step(action, render)        
+            score += reward
             state = state_        
         env.close()
         score_list.append(score)

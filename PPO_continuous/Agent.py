@@ -1,6 +1,6 @@
 from ActorCritic import ActorCritic
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, lr_scheduler
 import torch.nn.functional as F
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from torch.distributions.normal import Normal
@@ -11,6 +11,7 @@ class Agent:
     def __init__(self, state_dim, action_dim, lr, epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs):
         self.net = ActorCritic(state_dim, action_dim)
         self.optimizer = Adam(self.net.parameters(), lr=lr)
+        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 100, gamma = 0.5)
         self.epsilon = epsilon
         self.gamma = gamma
         self.lmbda = lmbda
@@ -25,7 +26,7 @@ class Agent:
         self.R = torch.zeros((buffer_size, 1), dtype = torch.float)
         self.S_= torch.zeros((buffer_size,) + state_dim, dtype = torch.float)
         self.D = torch.zeros((buffer_size, 1), dtype = torch.bool)
-        self.mntr = 0                                                
+        self.mntr = 0
         
     def get_action(self, state):
         with torch.no_grad():
@@ -75,7 +76,13 @@ class Agent:
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
                 self.optimizer.step()
+        # lr = self.optimizer.param_groups[0]["lr"]
+        # if lr > 1e-5:
+        #     self.lr_scheduler.step()
+        # else:
+        #     self.optimizer.param_groups[0]["lr"] = 1e-5
         self.mntr = 0
+
 
     def get_advantage(self, S, R, S_, D):
         with torch.no_grad():

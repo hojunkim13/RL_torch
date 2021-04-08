@@ -15,11 +15,11 @@ class Environment:
         return state.unsqueeze(0)
 
     def step(self, action, render = False):
-        """
-        input action space : (-1, -1, -1) ~ (+1, +1, +1)
-        env action space : (-1, 0, 0 ~ (+1, +1, +1)
-        So, We have to adjust input action
-        """
+        # """
+        # input action space : (-1, -1, -1) ~ (+1, +1, +1)
+        # env action space : (-1, 0, 0 ~ (+1, +1, +1)
+        # So, We have to adjust input action
+        # """
         #action = (action + [0, +1, +1]) * [1, 0.5, 0.5]
 
         reward = 0
