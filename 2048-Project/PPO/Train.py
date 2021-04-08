@@ -4,9 +4,7 @@ from PPO.Agent import Agent
 import numpy as np
 from Environment.DosEnv import _2048
 from Environment.Utils import *
-import gym
 
-gym.make()
 env_name = "2048"
 env = _2048()
 state_dim = (20,4,4)

@@ -1,5 +1,6 @@
 from Environment import logic
 import numpy as np
+import os
 
 class _2048:
     def __init__(self):
@@ -41,6 +42,7 @@ class _2048:
         return self.grid
 
     def render(self):
+        os.system("cls")
         print(self.grid[0])
         print(self.grid[1])
         print(self.grid[2])
