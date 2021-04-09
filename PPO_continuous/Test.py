@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from Agent import Agent
 import numpy as np
 from CarRacingWrapper import Environment
+from gym.wrappers import Monitor
+
 
 
 env_name = 'CarRacing-v0'

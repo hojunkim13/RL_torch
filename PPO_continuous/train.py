@@ -13,14 +13,14 @@ action_dim = 3
 save_cycle = 100
 load = False
 render = False
-n_episode = 10000
-lr = 3e-4
-gamma = 0.9
+n_episode = 100000
+lr = 1e-3
+gamma = 0.99
 lmbda = 0.95
-epsilon = 0.2
-buffer_size = 512
-batch_size = 256
-k_epochs = 2
+epsilon = 0.1
+buffer_size = 2000
+batch_size = 128
+k_epochs = 10
 path = './model/' + env_name
 agent = Agent(state_dim, action_dim, lr,epsilon, gamma, lmbda, buffer_size, batch_size, k_epochs)
 
@@ -37,8 +37,6 @@ if __name__ == "__main__":
         while not done:
             action, log_prob = agent.get_action(state.cuda())            
             state_, reward, done, _ = env.step(action, render)            
-            if done:
-                reward = -100
             score += reward
             agent.store((state,action,log_prob,reward,state_,done))
             agent.learn()

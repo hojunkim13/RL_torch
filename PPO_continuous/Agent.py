@@ -74,7 +74,7 @@ class Agent:
                 
                 self.optimizer.zero_grad()
                 total_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
+                #torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
                 self.optimizer.step()
         # lr = self.optimizer.param_groups[0]["lr"]
         # if lr > 1e-5:
