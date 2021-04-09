@@ -1,14 +1,16 @@
+from AtariWrapper import Environment
 from Agent import Agent
 import numpy as np
-from PongWrapper import Environment
 import time
 
 env_name = 'Pong-v0'
-env = Environment()
+env_name = 'Breakout-v0'
+
 n_episode = 1
 render = True
+record = False
 
-state_dim = (1,84,84)
+state_dim = (1,80,80)
 action_dim = 3
 gamma = 0.99
 lmbda = 0.95
@@ -19,6 +21,7 @@ batch_size = 64
 epsilon = 0.2
 path = 'model/' + env_name
 
+env = Environment(env_name, record)
 agent = Agent(state_dim, action_dim, lr, gamma, lmbda, epsilon, time_step, K_epochs, batch_size)
 agent.load(path)
 
@@ -33,7 +36,7 @@ if __name__ == "__main__":
         while not done:
             if render:
                 env.render()
-                time.sleep(0.01)
+                time.sleep(0.005)
             action, log_prob = agent.get_action(state)
             state_, reward, done, _ = env.step(action + 1, False)
             score += reward

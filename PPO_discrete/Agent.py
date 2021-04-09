@@ -90,7 +90,7 @@ class Agent:
                 
                 prob_new = policy.gather(1, A[index])
                                 
-                ratio = torch.exp(torch.log(prob_new) - torch.log(P[index]))
+                ratio = torch.exp(torch.log(prob_new + 1e-6) - torch.log(P[index] + 1e-6))
                 
                 surrogate1 = ratio * advantage[index]
                 surrogate2 = torch.clip(ratio, 1-self.epsilon, 1+self.epsilon) * advantage[index]

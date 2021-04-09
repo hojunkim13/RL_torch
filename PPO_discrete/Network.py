@@ -5,8 +5,8 @@ class Actor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
         if type(state_dim) is tuple:
-                                    #84, 84
-            self.net = nn.Sequential(nn.Conv2d(state_dim[0],16,8,4,0),
+                                    #80, 80
+            self.net = nn.Sequential(nn.Conv2d(state_dim[0],16,4,4,0),
                                    nn.ReLU(),
                                    # 20 20 
                                    nn.Conv2d(16,32,4,2,0),
@@ -50,8 +50,8 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Critic, self).__init__()
         if type(state_dim) is tuple:
-                                    #84, 84
-            self.net = nn.Sequential(nn.Conv2d(state_dim[0],16,8,4,0),
+                                    #80, 80
+            self.net = nn.Sequential(nn.Conv2d(state_dim[0],16,4,4,0),
                                    nn.ReLU(),
                                    # 20 20 
                                    nn.Conv2d(16,32,4,2,0),
