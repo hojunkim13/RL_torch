@@ -4,8 +4,8 @@ import torch.nn as nn
 class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim, std = 0.0):
         super(ActorCritic, self).__init__()
-                                    #84 84
-        self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],32,8,4,0),
+                                    #80 80
+        self.fcnet = nn.Sequential(nn.Conv2d(state_dim[0],32,4,4,0),
                                    nn.ReLU(),
                                    # 20 
                                    nn.Conv2d(32,64,4,4,2),
