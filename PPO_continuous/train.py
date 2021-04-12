@@ -11,10 +11,10 @@ state_dim = (4,80,80)
 action_dim = 3
 
 save_cycle = 100
-load = False
+load = True
 render = False
-n_episode = 100000
-lr = 1e-3
+n_episode = 10000
+lr = 1e-4
 gamma = 0.99
 lmbda = 0.95
 epsilon = 0.1
