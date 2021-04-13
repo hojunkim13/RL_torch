@@ -5,6 +5,10 @@ import numpy as np
 import random
 import torch
 import torch.nn.functional as F
+from Environment.DosEnv import _2048
+from Environment.Utils import *
+from MyMCTS import MCTS
+
 
 class Agent:
     def __init__(self, state_dim, action_dim, alpha, beta, gamma, lmbda, epsilon,
@@ -31,6 +35,9 @@ class Agent:
         self.D = np.zeros((buffer_size, 1), dtype = 'bool')
         self.P = np.zeros((buffer_size, 1), dtype = 'float')
         self.mntr = 0
+
+        self.mcts = MCTS(grid = None)
+        self.simulator = _2048()
         
     
     def get_action(self, state):
@@ -41,6 +48,7 @@ class Agent:
         log_prob = dist.log_prob(action)
         return action.detach().cpu().numpy(), log_prob.detach().cpu().numpy()
 
+ 
     def store(self, s, a, r, s_, d, log_prob):
         idx = self.mntr
         self.S[idx] = s

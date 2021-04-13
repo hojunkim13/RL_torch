@@ -28,7 +28,7 @@ agent = Agent(state_dim, action_dim, alpha, beta, gamma, lmbda, epsilon, buffer_
 if load:
     agent.load(env_name)
 
-if __name__ == "__main__":
+def main():
     score_list = []
     mas_list = []
     for e in range(n_episode):
@@ -52,3 +52,6 @@ if __name__ == "__main__":
         mas_list.append(average_score)
         print(f"Episode : {e+1} / {n_episode}, Score : {score:.0f}, Average: {average_score:.1f}, Max : {info}")
 
+
+if __name__ == "__main__":
+    main()

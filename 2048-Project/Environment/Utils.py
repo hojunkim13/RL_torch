@@ -51,6 +51,7 @@ def _spawn_new(grid):
     return grid
 
 def state2grid(state):
+    state = state[0, 4:]
     grid = np.transpose(state, (1,2,0))
     grid = np.argmax(grid, axis = -1)
     grid = 2 ** (grid)

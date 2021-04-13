@@ -1,4 +1,4 @@
-from Environment import logic
+import logic
 import numpy as np
 import os
 
@@ -11,8 +11,10 @@ class _2048:
                             logic.move_down,                            
                             ]
 
-    def step(self, action):
-        grid, changed = self.action_space[action](self.grid)
+    def step(self, action, grid = None):
+        if grid is None:
+            grid = self.grid
+        grid, changed = self.action_space[action](grid)
         game_state = logic.get_current_state(grid)
         if game_state in ("WON", "LOST"):
             done = True
