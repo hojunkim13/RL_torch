@@ -2,22 +2,22 @@ from Agent import Agent
 import numpy as np
 from AtariWrapper import Environment
 
-env_name = 'Pong-v0'
+#env_name = 'Pong-v0'
 env_name = 'Breakout-v0'
 env = Environment(env_name, record = False)
 state_dim = (1,80,80)
 action_dim = 3
-n_episode = 10000
-load = False
+n_episode = 50000
+load = True
 render = False
 save_freq = 100
 gamma = 0.99
 lmbda = 0.95
-lr = 1e-4
-buffer_size = 1000
+lr = 1e-5
+buffer_size = 2000
 K_epochs = 10
-batch_size = 32
-epsilon = 0.15
+batch_size = 128
+epsilon = 0.20
 path = 'model/' + env_name
 
 agent = Agent(state_dim, action_dim, lr, gamma, lmbda, epsilon, buffer_size, K_epochs, batch_size)
