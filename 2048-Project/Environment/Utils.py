@@ -51,7 +51,7 @@ def _spawn_new(grid):
     return grid
 
 def state2grid(state):
-    state = state[0, 4:]
+    # state = state[0, 4:]
     grid = np.transpose(state, (1,2,0))
     grid = np.argmax(grid, axis = -1)
     grid = 2 ** (grid)
@@ -59,16 +59,16 @@ def state2grid(state):
     return grid
 
 def preprocessing(grid):
-    legal_action_plane = np.ones((4,4,4))
-    for action in range(4):
-        _, moved, _ = move(grid, action)
-        if not moved:
-            legal_action_plane[:,:,action] = 0
+    # legal_action_plane = np.ones((4,4,4))
+    # for action in range(4):
+    #     _, moved, _ = move(grid, action)
+    #     if not moved:
+    #         legal_action_plane[:,:,action] = 0
 
     state = np.array(grid).reshape(-1)
     state = np.clip(state, 1, None)
     state = np.log2(state)
     state = np.eye(16)[state.astype(int)]
     state = state.reshape(4,4,16)
-    state = np.concatenate((legal_action_plane, state), axis = -1)
+    # state = np.concatenate((legal_action_plane, state), axis = -1)
     return np.transpose(state, (2,0,1))

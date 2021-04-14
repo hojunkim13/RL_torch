@@ -7,12 +7,12 @@ from Environment.Utils import *
 
 env_name = "2048"
 env = _2048()
-state_dim = (20,4,4)
+state_dim = (16,4,4)
 action_dim = 4
 
 
 n_episode = 50000
-load = True
+load = False
 save_freq = 100
 gamma = 0.99
 lmbda = 0.95
@@ -35,15 +35,13 @@ def main():
         done = False
         score = 0
         grid = env.reset()
-        state = preprocessing(grid)
-        while not done:            
-            action, log_prob = agent.get_action(state)
-            grid, reward, done, info = env.step(action)
-            state_ = preprocessing(grid)
+        while not done:
+            action, log_prob = agent.get_action_with_mcts(grid)
+            grid_, reward, done, info = env.step(action, False)
             score += reward
-            agent.store(state, action, reward, state_, done, log_prob)                
+            agent.store(grid, action, reward, grid_, done, log_prob)                
             agent.learn()
-            state = state_
+            grid = grid_
         #done
         if (e+1) % save_freq == 0:
             agent.save(env_name)

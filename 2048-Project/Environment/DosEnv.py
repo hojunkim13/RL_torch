@@ -1,6 +1,7 @@
-import logic
+from Environment import logic
 import numpy as np
 import os
+import time
 
 class _2048:
     def __init__(self):
@@ -11,10 +12,9 @@ class _2048:
                             logic.move_down,                            
                             ]
 
-    def step(self, action, grid = None):
-        if grid is None:
-            grid = self.grid
-        grid, changed = self.action_space[action](grid)
+    def step(self, action, render):
+        action = int(action)
+        grid, changed = self.action_space[action](self.grid)
         game_state = logic.get_current_state(grid)
         if game_state in ("WON", "LOST"):
             done = True
@@ -25,6 +25,12 @@ class _2048:
         reward = self._calcReward(grid, changed, done)
         self.score += reward
         self.grid = grid
+        if render:
+            self.render()
+            act_name = {0:"LEFT", 1:"UP", 2:"RIGHT", 3:"DOWN"}[action]
+            t_log = time.time() - self.time_log
+            self.time_log = time.time()
+            print(f"Move Direction : {act_name}, Thinking time: {t_log:.2f} sec")
         return grid, reward, done, int(np.max(grid))
 
 
@@ -41,6 +47,7 @@ class _2048:
     def reset(self):
         self.grid = logic.start_game()
         self.score = 0
+        self.time_log = time.time()
         return self.grid
 
     def render(self):

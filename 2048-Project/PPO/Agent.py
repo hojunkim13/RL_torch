@@ -1,4 +1,5 @@
 import os, sys
+import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PPO.Network import Actor, Critic
 import numpy as np
@@ -35,15 +36,14 @@ class Agent:
         self.D = np.zeros((buffer_size, 1), dtype = 'bool')
         self.P = np.zeros((buffer_size, 1), dtype = 'float')
         self.mntr = 0
-
-        self.mcts = MCTS(grid = None)
-        self.simulator = _2048()
         
-    
-    def get_action(self, state):
-        state = torch.tensor(state, dtype = torch.float32).unsqueeze(0).cuda()
-        policy = self.actor(state)[0]
-        dist = torch.distributions.Categorical(policy)
+    def get_action_with_mcts(self, grid):        
+        mcts = MCTS(grid, self.actor, self.critic)        
+
+        while mcts.search_count != mcts.search_num:
+            mcts.tree_search()
+        probs = mcts.get_probs()
+        dist = torch.distributions.Categorical(torch.tensor(probs, dtype=torch.float).cuda())
         action = dist.sample()
         log_prob = dist.log_prob(action)
         return action.detach().cpu().numpy(), log_prob.detach().cpu().numpy()
