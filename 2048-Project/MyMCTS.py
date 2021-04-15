@@ -4,6 +4,7 @@ from Environment import logic
 import torch
 
 
+
 action_space = [logic.move_left,
                 logic.move_up,
                 logic.move_right,
@@ -61,6 +62,7 @@ class MCTS:
             self.root_node.edges[move_idx] = Edge(prob)
 
     def select(self, node):
+        
         Q_values = []
         P_values = []
         N_values = []
@@ -75,6 +77,7 @@ class MCTS:
             move_idx = np.random.randint(0,4)
         else:
             move_idx = np.argmax(values)
+        
         return move_idx
 
 
@@ -105,9 +108,6 @@ class MCTS:
             edge.status["W"] += value
             edge.status["Q"] = edge.status["W"] / edge.status["N"]
 
-    def succeed(self):
-        pass
-
     def tree_search(self):
         node = self.root_node
         edge_history = []
@@ -120,7 +120,7 @@ class MCTS:
                 edge_history.append(node.edges[move_idx])
                 node = node.children[move_idx]
             
-        #expand
+        #expand        
         new_node = self.expand(node, move_idx)
         
         #evaluate

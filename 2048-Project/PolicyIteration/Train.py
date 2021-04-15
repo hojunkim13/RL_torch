@@ -3,6 +3,8 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PolicyIteration.Agent import Agent
 import numpy as np
 from Environment.DosEnv import _2048
+from Logger import logger
+
 
 env_name = "2048"
 env = _2048()
@@ -14,7 +16,10 @@ load = True
 save_freq = 10
 lr = 1e-2
 batch_size = 256
-agent = Agent(state_dim, action_dim, lr, batch_size)
+n_sim = 50
+
+
+agent = Agent(state_dim, action_dim, lr, batch_size, n_sim)
 
 
 if load:
@@ -26,6 +31,7 @@ def main():
         done = False
         grid = env.reset()
         agent.step_count = 0
+        logger.info(f"{e+1} EPISODE #####")
         while not done:
             action = agent.getAction(grid)
             agent.storeTransition(grid, action)
