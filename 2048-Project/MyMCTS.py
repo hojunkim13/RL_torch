@@ -33,6 +33,7 @@ class Node:
 
 
 class Edge:
+    
     def __init__(self, probability):        
         self.status = {
                     "N" : 0,
@@ -44,20 +45,20 @@ class Edge:
 
 
 class MCTS:
-    def __init__(self, root_grid, actor, critic):
+    eps = 0.25
+    search_count = 0
+    cpuct = 4
+    def __init__(self, root_grid, network):
         self.root_node = Node(root_grid)
-        self.tau = .1
-        self.cpuct = 1
-        self.search_num = 100
+        self.net = network        
 
-        self.search_count = 0
-        self.actor = actor
-        self.critic = critic
         state = preprocessing(root_grid)
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
-        probs = self.actor(state)[0].detach().cpu().numpy()
+        probs = self.net(state)[0].probs.detach().cpu().numpy()[0]
+        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)        
         for move_idx in range(4):
-            self.root_node.edges[move_idx] = Edge(probs[move_idx])
+            prob = probs[move_idx] * self.root_node.legal_moves[move_idx]
+            self.root_node.edges[move_idx] = Edge(prob)
 
     def select(self, node):
         Q_values = []
@@ -67,7 +68,7 @@ class MCTS:
             Q_values.append(edge.status["Q"])
             P_values.append(edge.status["P"])
             N_values.append(edge.status["N"])
-        U_values = self.cpuct * np.array(P_values) * np.square(sum(N_values)) / (1 + np.array(N_values))
+        U_values = self.cpuct * np.array(P_values) * np.sqrt(sum(N_values)) / (1 + np.array(N_values))
 
         values = [q+u for q,u in zip(Q_values, U_values)]
         if sum(values) == 0:
@@ -84,16 +85,18 @@ class MCTS:
 
         state = preprocessing(new_grid)
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
-        probs = self.actor(state)[0].detach().cpu().numpy()
-        for move_idx in range(4):
-            new_node.edges[move_idx] = Edge(probs[move_idx])
+        probs = self.net(state)[0].probs.detach().cpu().numpy()[0]
+        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)
+        for move_idx in range(4):                
+            prob = probs[move_idx] * new_node.legal_moves[move_idx]
+            new_node.edges[move_idx] = Edge(prob)
         return new_node
 
     def evaluate(self, node):
         state = preprocessing(node.grid)
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
         with torch.no_grad():
-            value = self.critic(state)[0].cpu().numpy()
+            value = self.net(state)[1].cpu().numpy().squeeze()
         return value
 
     def backup(self, history, value):
@@ -125,14 +128,18 @@ class MCTS:
 
         #backup
         self.backup(edge_history, value)
-
         self.search_count += 1
+        
 
-    def get_probs(self):
+    def get_probs(self, tau):
         N_values = []
         N_total = 0
         for edge in self.root_node.edges:
             N_values.append(edge.status["N"])
             N_total += edge.status["N"]
-        probs = (np.array(N_values) / N_total) ** (1/self.tau)
+        if tau == 1:
+            probs = (np.array(N_values) / N_total)
+        else:
+            probs = [0,0,0,0]
+            probs[np.argmax(N_values)] = 1
         return probs

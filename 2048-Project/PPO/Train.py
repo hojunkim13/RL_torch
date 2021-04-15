@@ -35,6 +35,7 @@ def main():
         done = False
         score = 0
         grid = env.reset()
+        agent.step_count = 0
         while not done:
             action, log_prob = agent.get_action_with_mcts(grid)
             grid_, reward, done, info = env.step(action, False)
@@ -42,6 +43,7 @@ def main():
             agent.store(grid, action, reward, grid_, done, log_prob)                
             agent.learn()
             grid = grid_
+            agent.step_count += 1
         #done
         if (e+1) % save_freq == 0:
             agent.save(env_name)

@@ -1,5 +1,4 @@
 import os, sys
-import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PPO.Network import Actor, Critic
 import numpy as np
@@ -37,12 +36,14 @@ class Agent:
         self.P = np.zeros((buffer_size, 1), dtype = 'float')
         self.mntr = 0
         
+        
     def get_action_with_mcts(self, grid):        
         mcts = MCTS(grid, self.actor, self.critic)        
 
         while mcts.search_count != mcts.search_num:
             mcts.tree_search()
-        probs = mcts.get_probs()
+        tau = 1 if self.step_count < 100 else 1e+8
+        probs = mcts.get_probs(tau)
         dist = torch.distributions.Categorical(torch.tensor(probs, dtype=torch.float).cuda())
         action = dist.sample()
         log_prob = dist.log_prob(action)
