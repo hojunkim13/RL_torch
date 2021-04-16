@@ -5,18 +5,17 @@ import numpy as np
 from Environment.DosEnv import _2048
 from Logger import logger
 
-
 env_name = "2048"
 env = _2048()
 state_dim = (16,4,4)
 action_dim = 4
 
 n_episode = 10000
-load = True
+load = False
 save_freq = 10
-lr = 1e-2
+lr = 1e-3
 batch_size = 256
-n_sim = 50
+n_sim = 400
 
 
 agent = Agent(state_dim, action_dim, lr, batch_size, n_sim)
@@ -31,13 +30,18 @@ def main():
         done = False
         grid = env.reset()
         agent.step_count = 0
-        logger.info(f"{e+1} EPISODE #####")
+        log = (e+1) % 10 == 0
+        if log:
+            logger.info(f"{e+1} EPISODE #####")
+            logger.info("########################")
+            logger.info("########################")
+            logger.info("########################")
         while not done:
-            action = agent.getAction(grid)
+            action = agent.getAction(grid, log)
             agent.storeTransition(grid, action)
             grid, _, done, info = env.step(action, False)    
-            agent.step_count += 1
-        outcome = np.log2(info) / 10        
+
+        outcome = np.log2(info) / 11     
         agent.learn(outcome = outcome)
 
         #done

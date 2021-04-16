@@ -1,41 +1,24 @@
 #Monte Carlo Tree search for 2048 games
 from Environment.Utils import *
-from Environment import logic
 import torch
 
-
-
-action_space = [logic.move_left,
-                logic.move_up,
-                logic.move_right,
-                logic.move_down]
-
-def get_legal_moves(grid):
-    legal_moves = []
-    for act_func in action_space:
-        if act_func(grid)[1]:
-            legal_moves.append(1)
-        else:
-            legal_moves.append(0)                        
-    return legal_moves
-
 class Node:
-    def __init__(self, grid):
+    def __init__(self, grid, parent):
+        self._parent = parent
         self.grid = grid
         self.legal_moves = get_legal_moves(grid)        
-        self.edges = [0, 0, 0, 0]
-        self.children = [0, 0, 0, 0]
+        self.children = []
+        self.edges = []
         
-    def isLeaf(self, move_idx):
-        if self.children[move_idx] == 0:
-            return True
-        else:
-            return False
+    def isLeaf(self):
+        return len(self.children) == 0
 
+    def isRoot(self):
+        return self._parent is None
 
 class Edge:
     
-    def __init__(self, probability):        
+    def __init__(self, probability):      
         self.status = {
                     "N" : 0,
                     "W" : 0,
@@ -50,96 +33,115 @@ class MCTS:
     search_count = 0
     cpuct = 4
     def __init__(self, root_grid, network):
-        self.root_node = Node(root_grid)
+        self.root_node = Node(root_grid, None)
         self.net = network        
 
-        state = preprocessing(root_grid)
-        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
-        probs = self.net(state)[0].probs.detach().cpu().numpy()[0]
-        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)        
-        for move_idx in range(4):
-            prob = probs[move_idx] * self.root_node.legal_moves[move_idx]
-            self.root_node.edges[move_idx] = Edge(prob)
-
-    def select(self, node):
-        
+    def _select(self, node):            
         Q_values = []
         P_values = []
         N_values = []
         for edge in node.edges:
+            if not edge:
+                Q_values.append(0)
+                P_values.append(0)
+                N_values.append(0)
+                continue
             Q_values.append(edge.status["Q"])
             P_values.append(edge.status["P"])
             N_values.append(edge.status["N"])
+
         U_values = self.cpuct * np.array(P_values) * np.sqrt(sum(N_values)) / (1 + np.array(N_values))
 
-        values = [q+u for q,u in zip(Q_values, U_values)]
+        values = [Q+U for Q,U in zip(Q_values, U_values)]
         if sum(values) == 0:
-            move_idx = np.random.randint(0,4)
+            idx = np.random.choice(range(len(values)))
         else:
-            move_idx = np.argmax(values)
-        
-        return move_idx
+            idx = np.argmax(values)
+        child = node.children[idx]
+        return child
 
 
-    def expand(self, node, move_idx):
-        new_grid, _ = action_space[move_idx](node.grid)
-        new_node = Node(new_grid)
-        node.children[move_idx] = new_node
-
-        state = preprocessing(new_grid)
-        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
-        probs = self.net(state)[0].probs.detach().cpu().numpy()[0]
-        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)
-        for move_idx in range(4):                
-            prob = probs[move_idx] * new_node.legal_moves[move_idx]
-            new_node.edges[move_idx] = Edge(prob)
-        return new_node
-
-    def evaluate(self, node):
-        state = preprocessing(node.grid)
-        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).cuda()
+    def _expand_and_evaluate(self, node):
+        leaf_state = preprocessing(node.grid)
+        leaf_state = torch.tensor(leaf_state, dtype = torch.float).unsqueeze(0).cuda()
         with torch.no_grad():
-            value = self.net(state)[1].cpu().numpy().squeeze()
-        return value
+            probs, leaf_value = self.net(leaf_state) 
+        probs = probs.probs.cpu().numpy()[0]
+        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)
+                
+        for move_idx in range(4):
+            if node.legal_moves[move_idx] == 0:
+                continue
+            new_grid, _ = action_space[move_idx](node.grid)
+            new_node = Node(new_grid, parent = node)
+            new_edge = Edge(probs[move_idx])
 
-    def backup(self, history, value):
-        for edge in reversed(history):
-            edge.status["N"] += 1
-            edge.status["W"] += value
-            edge.status["Q"] = edge.status["W"] / edge.status["N"]
+            node.children.append(new_node)
+            node.edges.append(new_edge)
 
-    def tree_search(self):
-        node = self.root_node
-        edge_history = []
-        #go to leaf
-        while True:
-            move_idx = self.select(node)
-            if node.isLeaf(move_idx):            
-                break
-            else:
-                edge_history.append(node.edges[move_idx])
-                node = node.children[move_idx]
-            
-        #expand        
-        new_node = self.expand(node, move_idx)
+        return leaf_value.cpu().item()
+
+
+    def backup(self, node, value):
+        if node.isRoot():            
+            return
         
-        #evaluate
-        value = self.evaluate(new_node)
+        for idx in range(sum(node._parent.legal_moves)):
+            if node is node._parent.children[idx]:
+                break
+        
+        edge = node._parent.edges[idx]
+        edge.status["N"] += 1
+        edge.status["W"] += value
+        edge.status["Q"] = edge.status["W"] / edge.status["N"]
+        
+        self.backup(node._parent, value)
+            
 
-        #backup
-        self.backup(edge_history, value)
+    def tree_search(self):        
+        node = self.root_node
+        while True:
+            if node.isLeaf():                
+                break
+            node = self._select(node)
+
+        value = self._expand_and_evaluate(node)            
+        if isEnd(node.grid):
+            value = np.log2(node.grid) / 11
+        self.backup(node, value)
         self.search_count += 1
         
-
     def get_probs(self, tau):
         N_values = []
         N_total = 0
         for edge in self.root_node.edges:
             N_values.append(edge.status["N"])
             N_total += edge.status["N"]
-        if tau == 1:
-            probs = (np.array(N_values) / N_total)
+        
+        if tau != 0:            
+            legal_probs = list((np.array(N_values) / N_total) ** tau)
+                    
+            probs = self.root_node.legal_moves.copy()
+            for idx in range(4):
+                if probs[idx]:
+                    p = legal_probs.pop(0)
+                    probs[idx] *= p                    
         else:
-            probs = [0,0,0,0]
+            legal_moves = self.root_node.legal_moves.copy()
+            # max_n = max(N_values)
+            # for idx in range(4):
+            #     if probs[idx]:
+            #         n_val = N_values.pop()
+            #         p = int(n_val == max_n)
+            #         probs[idx] = p
+            for _ in range(4):
+                try:
+                    idx = legal_moves.index(0)
+                except ValueError:
+                    break
+                N_values.insert(idx, legal_moves.pop(idx))
+                legal_moves.insert(0,1)
+            probs = [0] * 4
             probs[np.argmax(N_values)] = 1
+        
         return probs

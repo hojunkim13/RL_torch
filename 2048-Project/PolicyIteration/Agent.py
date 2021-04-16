@@ -21,7 +21,7 @@ class Agent:
         self.batch_size = batch_size
         self.trajectory = []
 
-    def getAction(self, grid):
+    def getAction(self, grid, log = False):
         start_time = time.time()
         mcts = MCTS(grid, self.net)
         
@@ -29,18 +29,20 @@ class Agent:
             mcts.tree_search()
         tau = 1 if self.step_count < 100 else 0
         probs = mcts.get_probs(tau)
-        if tau == 1:
-            dist = torch.distributions.Categorical(torch.tensor(probs, dtype=torch.float).cuda())
-            action = dist.sample().detach().cpu().numpy()
-        else:
-            action = probs.index(1)
+        action = np.random.choice(range(4), p = probs)
+        
 
-        for line in grid:
-            logger.info(line)
+        if log:
+            for line in grid:
+                logger.info(line)
+            act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
+            thinking_time = time.time() - start_time
+            logger.info(f"# Step {self.step_count}, : {act_dir}, Prob : {int(probs[action] * 100)}%, Thinking Time : {thinking_time:.1f}sec\n\n")
 
-        act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
-        thinking_time = time.time() - start_time
-        logger.info(f"# Action : {act_dir}, Thinking Time : {thinking_time:.1f}sec\n\n")        
+        #safty
+        if mcts.root_node.legal_moves[action] == 0:
+            print("WARNING")
+        self.step_count += 1
         return action
 
     def storeTransition(self, *transition):
@@ -65,8 +67,8 @@ class Agent:
 
         policy, value = self.net(S)
         value_loss = F.mse_loss(value, Z)
-        policy_loss = -(A * policy.log_prob(A + 1e-8)).mean()
-        total_loss = 0.6 * value_loss + 0.4 * policy_loss
+        policy_loss = -(A * policy.log_prob(A)).mean()
+        total_loss = 0.7 * value_loss + 0.3 * policy_loss
         self.optimizer.zero_grad()
         total_loss.backward()
         self.optimizer.step()

@@ -1,5 +1,6 @@
 import random
 import numpy as np
+from Environment import logic
 
 CELLS = [
   [(r, c) for r in range(4) for c in range(4)], # LEFT
@@ -15,6 +16,19 @@ GET_DELTAS = [
   lambda r, c: ((i, c) for i in range(r - 1, -1, -1)), # DOWN
 ]
 
+action_space = [logic.move_left,
+                logic.move_up,
+                logic.move_right,
+                logic.move_down]
+
+def get_legal_moves(grid):
+    legal_moves = []
+    for act_func in action_space:
+        if act_func(grid)[1]:
+            legal_moves.append(1)
+        else:
+            legal_moves.append(0)                        
+    return legal_moves
 
 def free_cells(grid):
     return [(x, y) for x in range(4) for y in range(4) if not grid[y][x]]
@@ -51,7 +65,6 @@ def _spawn_new(grid):
     return grid
 
 def state2grid(state):
-    # state = state[0, 4:]
     grid = np.transpose(state, (1,2,0))
     grid = np.argmax(grid, axis = -1)
     grid = 2 ** (grid)
@@ -59,16 +72,17 @@ def state2grid(state):
     return grid
 
 def preprocessing(grid):
-    # legal_action_plane = np.ones((4,4,4))
-    # for action in range(4):
-    #     _, moved, _ = move(grid, action)
-    #     if not moved:
-    #         legal_action_plane[:,:,action] = 0
-
     state = np.array(grid).reshape(-1)
     state = np.clip(state, 1, None)
     state = np.log2(state)
     state = np.eye(16)[state.astype(int)]
     state = state.reshape(4,4,16)
-    # state = np.concatenate((legal_action_plane, state), axis = -1)
     return np.transpose(state, (2,0,1))
+
+
+def isEnd(grid):
+    for act in action_space:
+        _, changed = act(grid)
+        if changed:
+            return False
+    return True

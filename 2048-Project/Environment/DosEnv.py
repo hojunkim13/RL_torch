@@ -15,13 +15,15 @@ class _2048:
     def step(self, action, render):
         action = int(action)
         grid, changed = self.action_space[action](self.grid)
-        game_state = logic.get_current_state(grid)
+        if changed:
+            logic.add_new_tile(grid)
+        
+        game_state = logic.get_current_state(grid)        
         if game_state in ("WON", "LOST"):
             done = True
         else:
             done = False
-            if changed:
-                logic.add_new_tile(grid)
+            
         reward = self._calcReward(grid, changed, done)
         self.score += reward
         self.grid = grid
