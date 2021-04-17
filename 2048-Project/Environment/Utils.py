@@ -57,12 +57,25 @@ def move(grid, action):
     return grid, moved, sum
 
 
-def _spawn_new(grid):
+def spawn_new(grid):
     """Spawn some new tiles."""
     free = free_cells(grid)
     x, y = random.choice(free)
     grid[y][x] = random.randint(0, 10) and 2 or 4
     return grid
+
+def calc_outcome(grid, goal = 2048):
+    if np.array(grid).max() >= 256:
+        return 1
+    else:
+        return -1
+
+    # max_tile = np.array(grid).max()    
+    # return np.log2(max_tile) - np.log2(goal) + 2
+    # max_tile = np.max(grid)
+    # reward = np.log2(max_tile) / 10
+    return reward
+        
 
 def state2grid(state):
     grid = np.transpose(state, (1,2,0))

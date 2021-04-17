@@ -29,7 +29,6 @@ class Edge:
 
 
 class MCTS:
-    eps = 0.25
     search_count = 0
     cpuct = 4
     def __init__(self, root_grid, network):
@@ -41,22 +40,14 @@ class MCTS:
         P_values = []
         N_values = []
         for edge in node.edges:
-            if not edge:
-                Q_values.append(0)
-                P_values.append(0)
-                N_values.append(0)
-                continue
             Q_values.append(edge.status["Q"])
             P_values.append(edge.status["P"])
             N_values.append(edge.status["N"])
 
         U_values = self.cpuct * np.array(P_values) * np.sqrt(sum(N_values)) / (1 + np.array(N_values))
 
-        values = [Q+U for Q,U in zip(Q_values, U_values)]
-        if sum(values) == 0:
-            idx = np.random.choice(range(len(values)))
-        else:
-            idx = np.argmax(values)
+        values = [Q+U for Q,U in zip(Q_values, U_values)]        
+        idx = np.argmax(values)
         child = node.children[idx]
         return child
 
@@ -67,12 +58,15 @@ class MCTS:
         with torch.no_grad():
             probs, leaf_value = self.net(leaf_state) 
         probs = probs.probs.cpu().numpy()[0]
-        probs = (1-self.eps) * probs + self.eps * np.random.dirichlet(probs)
+        if node.isRoot():
+            probs = 0.75 * np.array(probs) + 0.25 * np.random.dirichlet(0.3 * np.ones(len(probs)))
                 
         for move_idx in range(4):
             if node.legal_moves[move_idx] == 0:
                 continue
-            new_grid, _ = action_space[move_idx](node.grid)
+            new_grid, _ = action_space[move_idx](node.grid)            
+            new_grid = spawn_new(new_grid)
+                
             new_node = Node(new_grid, parent = node)
             new_edge = Edge(probs[move_idx])
 
@@ -107,7 +101,7 @@ class MCTS:
 
         value = self._expand_and_evaluate(node)            
         if isEnd(node.grid):
-            value = np.log2(node.grid) / 11
+            value = calc_outcome(node.grid)
         self.backup(node, value)
         self.search_count += 1
         
@@ -144,4 +138,4 @@ class MCTS:
             probs = [0] * 4
             probs[np.argmax(N_values)] = 1
         
-        return probs
+        return probs, N_values

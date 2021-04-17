@@ -27,17 +27,16 @@ class Agent:
         
         while mcts.search_count != self.n_sim:
             mcts.tree_search()
-        tau = 1 if self.step_count < 100 else 0
-        probs = mcts.get_probs(tau)
+        tau = 1 if self.step_count <= 30 else 0
+        probs, N_values = mcts.get_probs(tau)            
         action = np.random.choice(range(4), p = probs)
         
-
         if log:
             for line in grid:
                 logger.info(line)
             act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
             thinking_time = time.time() - start_time
-            logger.info(f"# Step {self.step_count}, : {act_dir}, Prob : {int(probs[action] * 100)}%, Thinking Time : {thinking_time:.1f}sec\n\n")
+            logger.info(f"# Step {self.step_count}, : {act_dir}, Visit Count : {N_values}, Thinking Time : {thinking_time:.1f}sec\n\n")
 
         #safty
         if mcts.root_node.legal_moves[action] == 0:
@@ -47,28 +46,30 @@ class Agent:
 
     def storeTransition(self, *transition):
         state = preprocessing(transition[0])
-        action = int(transition[1])
+        action = np.eye(4)[transition[1]]
         transition = np.array((state, action), dtype = object)
-        self.trajectory.append((state, action))
+        self.trajectory.append(transition)
 
     def learn(self, outcome):
         try:
             trajectory = random.sample(self.trajectory, self.batch_size)        
         except ValueError:
             trajectory = self.trajectory
+
         trajectory = np.array(trajectory, dtype = object)
         S = np.vstack(trajectory[:,0]).reshape(-1, *self.state_dim)
-        A = np.vstack(trajectory[:,1])
-        Z = np.ones(A.shape) * outcome
+        A = np.vstack(trajectory[:,1])        
 
         S = torch.tensor(S, dtype = torch.float).cuda()
         A = torch.tensor(A, dtype = torch.float).cuda()
-        Z = torch.tensor(Z, dtype = torch.float).cuda()
 
         policy, value = self.net(S)
+        Z = torch.ones_like(value, dtype = torch.float).cuda() * outcome
         value_loss = F.mse_loss(value, Z)
-        policy_loss = -(A * policy.log_prob(A)).mean()
-        total_loss = 0.7 * value_loss + 0.3 * policy_loss
+        policy_loss = (-1 * A * torch.log(policy.probs + 1e-8)).mean()
+        
+        
+        total_loss = value_loss + policy_loss
         self.optimizer.zero_grad()
         total_loss.backward()
         self.optimizer.step()

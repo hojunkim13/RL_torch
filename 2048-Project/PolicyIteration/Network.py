@@ -56,7 +56,7 @@ class Network(nn.Module):
                                     nn.Linear(4*4*1, 256),
                                     nn.ReLU(),                                    
                                     nn.Linear(256, 1),
-                                    nn.Tanh(),                                    
+                                    #nn.Tanh(),                                    
         )
 
         self.cuda()
