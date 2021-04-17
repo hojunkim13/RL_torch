@@ -9,7 +9,7 @@ from gym.wrappers import Monitor
 env_name = 'CarRacing-v0'
 
 env = Environment()
-state_dim = (1,84,84)
+state_dim = (4,80,80)
 action_dim = 3
 
 render = True

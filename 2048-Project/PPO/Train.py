@@ -7,12 +7,12 @@ from Environment.Utils import *
 
 env_name = "2048"
 env = _2048()
-state_dim = (20,4,4)
+state_dim = (16,4,4)
 action_dim = 4
 
 
 n_episode = 50000
-load = True
+load = False
 save_freq = 100
 gamma = 0.99
 lmbda = 0.95
@@ -28,22 +28,22 @@ agent = Agent(state_dim, action_dim, alpha, beta, gamma, lmbda, epsilon, buffer_
 if load:
     agent.load(env_name)
 
-if __name__ == "__main__":
+def main():
     score_list = []
     mas_list = []
     for e in range(n_episode):
         done = False
         score = 0
         grid = env.reset()
-        state = preprocessing(grid)
-        while not done:            
-            action, log_prob = agent.get_action(state)
-            grid, reward, done, info = env.step(action)
-            state_ = preprocessing(grid)
+        agent.step_count = 0
+        while not done:
+            action, log_prob = agent.get_action_with_mcts(grid)
+            grid_, reward, done, info = env.step(action, False)
             score += reward
-            agent.store(state, action, reward, state_, done, log_prob)                
+            agent.store(grid, action, reward, grid_, done, log_prob)                
             agent.learn()
-            state = state_
+            grid = grid_
+            agent.step_count += 1
         #done
         if (e+1) % save_freq == 0:
             agent.save(env_name)
@@ -52,3 +52,6 @@ if __name__ == "__main__":
         mas_list.append(average_score)
         print(f"Episode : {e+1} / {n_episode}, Score : {score:.0f}, Average: {average_score:.1f}, Max : {info}")
 
+
+if __name__ == "__main__":
+    main()

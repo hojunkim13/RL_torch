@@ -23,7 +23,6 @@ n_episode = 10000
 
 
 
-
 from Environment.DosEnv import _2048
 env = _2048()
 
