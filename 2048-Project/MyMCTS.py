@@ -27,10 +27,9 @@ class Edge:
         }
         
 
-
 class MCTS:
     search_count = 0
-    cpuct = 4
+    cpuct = 5
     def __init__(self, root_grid, network):
         self.root_node = Node(root_grid, None)
         self.net = network        
@@ -112,30 +111,38 @@ class MCTS:
             N_values.append(edge.status["N"])
             N_total += edge.status["N"]
         
-        if tau != 0:            
-            legal_probs = list((np.array(N_values) / N_total) ** tau)
-                    
-            probs = self.root_node.legal_moves.copy()
-            for idx in range(4):
-                if probs[idx]:
-                    p = legal_probs.pop(0)
-                    probs[idx] *= p                    
-        else:
-            legal_moves = self.root_node.legal_moves.copy()
-            # max_n = max(N_values)
-            # for idx in range(4):
-            #     if probs[idx]:
-            #         n_val = N_values.pop()
-            #         p = int(n_val == max_n)
-            #         probs[idx] = p
-            for _ in range(4):
-                try:
-                    idx = legal_moves.index(0)
-                except ValueError:
-                    break
-                N_values.insert(idx, legal_moves.pop(idx))
-                legal_moves.insert(0,1)
-            probs = [0] * 4
-            probs[np.argmax(N_values)] = 1
         
+        legal_probs = list((np.array(N_values) / N_total) ** 1)                    
+        probs = self.root_node.legal_moves.copy()
+        for idx in range(4):
+            if probs[idx]:
+                p = legal_probs.pop(0)
+                probs[idx] *= p  
+
+        # if tau != 0:            
+        #     legal_probs = list((np.array(N_values) / N_total) ** tau)
+                    
+        #     probs = self.root_node.legal_moves.copy()
+        #     for idx in range(4):
+        #         if probs[idx]:
+        #             p = legal_probs.pop(0)
+        #             probs[idx] *= p                    
+        # else:
+        #     legal_moves = self.root_node.legal_moves.copy()
+        #     # max_n = max(N_values)
+        #     # for idx in range(4):
+        #     #     if probs[idx]:
+        #     #         n_val = N_values.pop()
+        #     #         p = int(n_val == max_n)
+        #     #         probs[idx] = p
+        #     for _ in range(4):
+        #         try:
+        #             idx = legal_moves.index(0)
+        #         except ValueError:
+        #             break
+        #         N_values.insert(idx, legal_moves.pop(idx))
+        #         legal_moves.insert(0,1)
+        #     probs = [0] * 4
+        #     probs[np.argmax(N_values)] = 1
+        assert abs(sum(probs)) <= 1 + 1e+5
         return probs, N_values

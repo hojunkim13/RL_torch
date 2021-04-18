@@ -65,16 +65,15 @@ def spawn_new(grid):
     return grid
 
 def calc_outcome(grid, goal = 2048):
-    if np.array(grid).max() >= 256:
-        return 1
-    else:
-        return -1
+    # if np.array(grid).max() >= 256:
+    #     return 1
+    # else:
+    #     return -1
 
     # max_tile = np.array(grid).max()    
     # return np.log2(max_tile) - np.log2(goal) + 2
-    # max_tile = np.max(grid)
-    # reward = np.log2(max_tile) / 10
-    return reward
+    max_tile = np.log2(np.max(grid))
+    return np.sqrt(max_tile / 11) - np.sqrt(0.5)
         
 
 def state2grid(state):

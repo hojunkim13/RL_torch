@@ -16,7 +16,7 @@ load = False
 save_freq = 10
 lr = 1e-2
 batch_size = 128
-n_sim = 30
+n_sim = 400
 
 
 agent = Agent(state_dim, action_dim, lr, batch_size, n_sim)
@@ -33,14 +33,14 @@ def main():
         agent.step_count = 0
         log = (e+1) % 10 == 0
         if log:
-            logger.info(f"{e+1} EPISODE #####")
+            logger.info(f"EPISODE {e+1} ##########")
             logger.info("########################")
             logger.info("########################")
             logger.info("########################")
         while not done:
-            action = agent.getAction(grid, log)
+            action, mcts_probs = agent.getAction(grid, log)
             grid, _, done, info = env.step(action, False)    
-            agent.storeTransition(grid, action)        
+            agent.storeTransition(grid, mcts_probs) 
         outcome = calc_outcome(grid)
         agent.learn(outcome)
 

@@ -13,9 +13,9 @@ from Logger import logger
 class Agent:
     def __init__(self, state_dim, action_dim, lr, batch_size, n_sim):
         self.net = Network(state_dim, action_dim)
-        self.optimizer = Adam(self.net.parameters(), lr = lr, weight_decay= 1e-4)
-        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 400*1000, 0.1)
-        
+        self.optimizer = Adam(self.net.parameters(), lr = lr, weight_decay= 1e-4, betas=(0.8, 0.999))
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)
+                
         self.n_sim = n_sim
         self.state_dim = state_dim
         self.batch_size = batch_size
@@ -25,11 +25,15 @@ class Agent:
         start_time = time.time()
         mcts = MCTS(grid, self.net)
         
-        while mcts.search_count != self.n_sim:
+        while mcts.search_count != (self.n_sim + 1):
             mcts.tree_search()
         tau = 1 if self.step_count <= 30 else 0
-        probs, N_values = mcts.get_probs(tau)            
-        action = np.random.choice(range(4), p = probs)
+
+        probs, N_values = mcts.get_probs(tau)
+        if tau:
+            action = np.random.choice(range(4), p = probs)
+        else:
+            action = np.argmax(probs)
         
         if log:
             for line in grid:
@@ -42,12 +46,12 @@ class Agent:
         if mcts.root_node.legal_moves[action] == 0:
             print("WARNING")
         self.step_count += 1
-        return action
+        return action, probs
 
     def storeTransition(self, *transition):
         state = preprocessing(transition[0])
-        action = np.eye(4)[transition[1]]
-        transition = np.array((state, action), dtype = object)
+        probs = transition[1]
+        transition = np.array((state, probs), dtype = object)
         self.trajectory.append(transition)
 
     def learn(self, outcome):
@@ -58,15 +62,15 @@ class Agent:
 
         trajectory = np.array(trajectory, dtype = object)
         S = np.vstack(trajectory[:,0]).reshape(-1, *self.state_dim)
-        A = np.vstack(trajectory[:,1])        
-
-        S = torch.tensor(S, dtype = torch.float).cuda()
-        A = torch.tensor(A, dtype = torch.float).cuda()
+        S = torch.tensor(S, dtype = torch.float).cuda()        
+        mcts_probs = np.vstack(trajectory[:,1])        
+        mcts_probs = torch.tensor(mcts_probs, dtype = torch.float).cuda()
 
         policy, value = self.net(S)
         Z = torch.ones_like(value, dtype = torch.float).cuda() * outcome
+        
         value_loss = F.mse_loss(value, Z)
-        policy_loss = (-1 * A * torch.log(policy.probs + 1e-8)).mean()
+        policy_loss = -(mcts_probs * torch.log(policy.probs + 1e-8)).mean()
         
         
         total_loss = value_loss + policy_loss
