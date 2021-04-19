@@ -1,14 +1,10 @@
-import numpy as np
+values = [0,0,0,0]    
+for first_action in range(4):
+    for sim in range(10000 // 4):
+        value = 0
+        while value != 100:
+            value += 1
+        #value = self.calcValue(grid)
+        values[first_action] += value
 
-visits = np.array([10,10,10,10])
-
-probs = visits / visits.sum()
-act = np.random.choice(range(4), p = probs)
-visits[act] += 1
-print(act)
-for _ in range(100):
-    probs = visits / visits.sum()
-    act = np.random.choice(range(4), p = probs)
-    visits[act] += 1
-
-print(visits)
+print(values)
