@@ -32,7 +32,8 @@ class MCTS:
     cpuct = 5
     def __init__(self, root_grid, network):
         self.root_node = Node(root_grid, None)
-        self.net = network        
+        self.net = network
+
 
     def _select(self, node):            
         Q_values = []
@@ -55,13 +56,14 @@ class MCTS:
         leaf_state = preprocessing(node.grid)
         leaf_state = torch.tensor(leaf_state, dtype = torch.float).unsqueeze(0).cuda()
         with torch.no_grad():
-            probs, leaf_value = self.net(leaf_state) 
-        probs = probs.probs.cpu().numpy()[0]
+            probs = self.net(leaf_state)
+            value = calc_value(node.grid)
+        probs = probs.cpu().numpy()[0]
         if node.isRoot():
             probs = 0.75 * np.array(probs) + 0.25 * np.random.dirichlet(0.3 * np.ones(len(probs)))
                 
         for move_idx in range(4):
-            if node.legal_moves[move_idx] == 0:
+            if not node.legal_moves[move_idx]:
                 continue
             new_grid, _ = action_space[move_idx](node.grid)            
             new_grid = spawn_new(new_grid)
@@ -72,7 +74,7 @@ class MCTS:
             node.children.append(new_node)
             node.edges.append(new_edge)
 
-        return leaf_value.cpu().item()
+        return value
 
 
     def backup(self, node, value):
@@ -98,17 +100,19 @@ class MCTS:
                 break
             node = self._select(node)
 
-        value = self._expand_and_evaluate(node)            
-        if isEnd(node.grid):
-            value = calc_outcome(node.grid)
+        value = self._expand_and_evaluate(node)        
         self.backup(node, value)
         self.search_count += 1
         
     def get_probs(self, tau):
         N_values = []
+        Q_values = []
+        P_values = []
         N_total = 0
         for edge in self.root_node.edges:
             N_values.append(edge.status["N"])
+            Q_values.append(edge.status["Q"])
+            P_values.append(edge.status["P"])
             N_total += edge.status["N"]
         
         
@@ -145,4 +149,4 @@ class MCTS:
         #     probs = [0] * 4
         #     probs[np.argmax(N_values)] = 1
         assert abs(sum(probs)) <= 1 + 1e+5
-        return probs, N_values
+        return probs, [Q_values, N_values, P_values]

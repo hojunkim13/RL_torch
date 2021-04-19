@@ -1,9 +1,8 @@
-from PolicyIteration.Network import Network
+from PolicyIteration.PolicyNetwork import Network
 from torch.optim import Adam
 from Environment.Utils import *
 from MyMCTS import MCTS
 import torch
-import torch.nn.functional as F
 import numpy as np
 import random
 import time
@@ -29,7 +28,8 @@ class Agent:
             mcts.tree_search()
         tau = 1 if self.step_count <= 30 else 0
 
-        probs, N_values = mcts.get_probs(tau)
+        probs, edge_info = mcts.get_probs(tau)
+        edge_info = np.array(edge_info, dtype = np.float16)
         if tau:
             action = np.random.choice(range(4), p = probs)
         else:
@@ -39,8 +39,9 @@ class Agent:
             for line in grid:
                 logger.info(line)
             act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
-            thinking_time = time.time() - start_time
-            logger.info(f"# Step {self.step_count}, : {act_dir}, Visit Count : {N_values}, Thinking Time : {thinking_time:.1f}sec\n\n")
+            time_spend = time.time() - start_time
+            logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec, Moves : {mcts.root_node.legal_moves}")
+            logger.info(f"# Q : {edge_info[0]}, N : {edge_info[1]}, P : {edge_info[2]}\n\n")
 
         #safty
         if mcts.root_node.legal_moves[action] == 0:
@@ -54,7 +55,7 @@ class Agent:
         transition = np.array((state, probs), dtype = object)
         self.trajectory.append(transition)
 
-    def learn(self, outcome):
+    def learn(self):
         try:
             trajectory = random.sample(self.trajectory, self.batch_size)        
         except ValueError:
@@ -66,16 +67,12 @@ class Agent:
         mcts_probs = np.vstack(trajectory[:,1])        
         mcts_probs = torch.tensor(mcts_probs, dtype = torch.float).cuda()
 
-        policy, value = self.net(S)
-        Z = torch.ones_like(value, dtype = torch.float).cuda() * outcome
+        policy = self.net(S)
         
-        value_loss = F.mse_loss(value, Z)
-        policy_loss = -(mcts_probs * torch.log(policy.probs + 1e-8)).mean()
+        policy_loss = -(mcts_probs * torch.log(policy + 1e-8)).mean()
         
-        
-        total_loss = value_loss + policy_loss
         self.optimizer.zero_grad()
-        total_loss.backward()
+        policy_loss.backward()
         self.optimizer.step()
         self.trajectory = []
 

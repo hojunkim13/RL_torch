@@ -64,16 +64,22 @@ def spawn_new(grid):
     grid[y][x] = random.randint(0, 10) and 2 or 4
     return grid
 
-def calc_outcome(grid, goal = 2048):
-    # if np.array(grid).max() >= 256:
-    #     return 1
-    # else:
-    #     return -1
+def calc_value(grid):
+    if not isEnd(grid):
+        value = (np.log2(np.max(grid)) + len(free_cells(grid))) / 20
+        value = np.clip(value, 0, 1)
+    else:
+        value = -1
+    return value
 
-    # max_tile = np.array(grid).max()    
-    # return np.log2(max_tile) - np.log2(goal) + 2
-    max_tile = np.log2(np.max(grid))
-    return np.sqrt(max_tile / 11) - np.sqrt(0.5)
+    if not isEnd(grid):
+        if np.max(grid) >= 2048:
+            value = 1
+        else:
+            value = 0
+    else:
+        value = -1
+    return value
         
 
 def state2grid(state):
