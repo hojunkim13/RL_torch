@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.linear import Linear
 
 class ResidualBlock(nn.Module):
     def __init__(self, *args):
@@ -56,7 +55,7 @@ class Network(nn.Module):
                                     nn.Linear(4*4*1, 256),
                                     nn.ReLU(),                                    
                                     nn.Linear(256, 1),
-                                    #nn.Tanh(),                                    
+                                    #nn.Tanh(),
         )
 
         self.cuda()

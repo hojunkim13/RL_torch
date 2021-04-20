@@ -30,12 +30,16 @@ def move_grid(grid, direction):
 
 
 def get_legal_moves(grid):
+    # legal_moves = []
+    # for act_func in action_space:
+    #     if act_func(grid)[1]:
+    #         legal_moves.append(action_space.index(act_func))                       
     legal_moves = []
     for act_func in action_space:
         if act_func(grid)[1]:
             legal_moves.append(1)
         else:
-            legal_moves.append(0)                        
+            legal_moves.append(0)    
     return legal_moves
 
 def free_cells(grid):
@@ -72,8 +76,8 @@ def spawn_new(grid):
     grid[y][x] = random.randint(0, 10) and 2 or 4
     return grid
 
-def calc_value(grid):
-    return np.sum(grid) / 1e+3
+def calc_value(grid, mag_decay = 1e+3):
+    return np.sum(grid) / mag_decay
 
 
         
