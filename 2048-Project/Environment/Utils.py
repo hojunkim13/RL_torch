@@ -21,6 +21,14 @@ action_space = [logic.move_left,
                 logic.move_right,
                 logic.move_down]
 
+
+def move_grid(grid, direction):
+    grid, changed = action_space[direction](grid)
+    if changed:
+        grid = spawn_new(grid)
+    return grid
+
+
 def get_legal_moves(grid):
     legal_moves = []
     for act_func in action_space:
