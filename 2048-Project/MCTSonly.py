@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 
-n_sim = 200
+n_sim = 100
 n_episode = 5
 
 env_name = "2048"
@@ -51,9 +51,7 @@ class MCTS:
                 value += 1
             
             self.values[first_action] += value        
-        
-        
-
+                
     def simulWithThread(self):
         threads = []
         for first_action in range(4):
@@ -63,6 +61,23 @@ class MCTS:
         [worker.join() for worker in threads]        
         return np.argmax(self.values)
        
+    def simulWithTime(self, time_limit = 0.5):
+        for first_action in range(4):
+            start_grid = move_grid(self.root_grid, first_action)
+            if np.array_equal(start_grid, self.root_grid):                            
+                continue
+            t1 = time.time()
+            while time.time() - t1 < time_limit / 4:            
+                value = 0
+                grid = move_grid(self.root_grid, first_action)
+                while not isEnd(grid):
+                    action = np.random.randint(0,4)
+                    grid = move_grid(grid, action)
+                    value += 1                                
+                self.values[first_action] += value            
+        outputs = self.values
+        return np.argmax(outputs)    
+    
 
 def main():
     mcts = MCTS(n_sim)
@@ -74,8 +89,9 @@ def main():
         while not done:
             mcts.setRootGrid(grid)
             #action = mcts.slmulation()
-            action = mcts.simulWithThread()
-            grid, _, done, info = env.step(action, False)
+            #action = mcts.simulWithThread()
+            action = mcts.simulWithTime()
+            grid, _, done, info = env.step(action, True)
         score_list.append(info)
         average_score = np.mean(score_list[-100:])        
         spending_time = time.time() - start_time
