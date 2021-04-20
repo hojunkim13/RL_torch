@@ -11,14 +11,15 @@ class _2048:
                             logic.move_right,
                             logic.move_down,                            
                             ]
+        self.goal = 2048        
 
-    def step(self, action, render):
+    def step(self, action, render = False):
         action = int(action)
         grid, changed = self.action_space[action](self.grid)
         if changed:
             logic.add_new_tile(grid)
         
-        game_state = logic.get_current_state(grid)        
+        game_state = logic.get_current_state(grid, self.goal)        
         if game_state in ("WON", "LOST"):
             done = True
         else:
@@ -37,14 +38,9 @@ class _2048:
 
 
     def _calcReward(self, grid, changed, done):        
-        if done:
-            return -100
-        elif not changed:
-            return -1
-        grid = np.array(grid).reshape(-1)
-        reward1 = np.log2(grid.max()) * 2
-        reward2 = (len(grid) - np.count_nonzero(grid))
-        return reward1 + reward2
+        if not changed:
+            return 0        
+        return np.sum(grid) - np.sum(self.grid)
     
     def reset(self):
         self.grid = logic.start_game()

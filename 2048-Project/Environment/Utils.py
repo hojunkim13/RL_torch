@@ -61,7 +61,7 @@ def move(grid, action):
             # When hitting a tile we stop trying.
                 break
     if moved:
-        grid = _spawn_new(grid)
+        grid = spawn_new(grid)
     return grid, moved, sum
 
 
@@ -73,21 +73,9 @@ def spawn_new(grid):
     return grid
 
 def calc_value(grid):
-    if not isEnd(grid):
-        value = (np.log2(np.max(grid)) + len(free_cells(grid))) / 20
-        value = np.clip(value, 0, 1)
-    else:
-        value = -1
-    return value
+    return np.sum(grid) / 1e+3
 
-    if not isEnd(grid):
-        if np.max(grid) >= 2048:
-            value = 1
-        else:
-            value = 0
-    else:
-        value = -1
-    return value
+
         
 
 def state2grid(state):
