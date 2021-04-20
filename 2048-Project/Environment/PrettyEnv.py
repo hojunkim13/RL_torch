@@ -26,10 +26,10 @@ class Game2048_wrapper(GameManager):
         self.new_game()
         if not test_mode:
             self.game.ANIMATION_FRAMES = 1
-            self.game.WIN_TILE = 2 ** 20
+            self.game.WIN_TILE = 999999
         else:
-            self.game.ANIMATION_FRAMES = 20
-            self.game.WIN_TILE = 2048
+            self.game.ANIMATION_FRAMES = 10
+            self.game.WIN_TILE = 999999
         return self.game.grid
     
     def step(self, action):
@@ -39,13 +39,13 @@ class Game2048_wrapper(GameManager):
         state = self.game.grid        
         reward = self.calcReward(old_score)            
         done = self.game.won or self.game.lost
-        
+        info = np.max(state)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.close()
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.dispatch(event)        
-        return state, reward, done
+        return state, reward, done, info
             
     def calcReward(self, old_score):
         if self.game.lost or self.game.won:

@@ -36,13 +36,13 @@ def add_new_tile(mat):
   
 # function to get the current
 # state of game
-def get_current_state(mat):
+def get_current_state(mat, goal = 2048):
   
     # if any cell contains
     # 2048 we have won
     for i in range(4):
         for j in range(4):
-            if(mat[i][j]== 2048):
+            if(mat[i][j]== goal):
                 return 'WON'
   
     # if we are still left with

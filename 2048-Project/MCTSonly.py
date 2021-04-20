@@ -1,17 +1,27 @@
 import numpy as np
-from Environment.DosEnv import _2048
 from Environment.Utils import *
+import os
 import time
 from threading import Thread
-from threading import Lock
 
-lock = Lock()
-
-n_sim = 400
+n_sim = 200
 n_episode = 1
-
 env_name = "2048"
-env = _2048()
+
+# from Environment.DosEnv import _2048
+# env = _2048()
+
+from _2048 import Game2048
+from Environment.PrettyEnv import Game2048_wrapper
+import pygame
+p1 = os.path.join("data/game", '2048_.score')
+p2 = os.path.join("data/game", '2048_.%d.state')        
+screen = pygame.display.set_mode((Game2048.WIDTH, Game2048.HEIGHT))
+pygame.init()
+pygame.display.set_caption("2048!")
+pygame.display.set_icon(Game2048.icon(32))
+env = Game2048_wrapper(screen, p1, p2)
+env.draw()
 
 
 class MCTS:
@@ -23,9 +33,8 @@ class MCTS:
     def setRootGrid(self, grid):
         self.root_grid = grid
         self.values = np.zeros(4)
-        
 
-    def slmulation(self):        
+    def simulation(self):        
         for first_action in range(4):
             start_grid = move_grid(self.root_grid, first_action)
             if np.array_equal(start_grid, self.root_grid):                            
@@ -51,12 +60,10 @@ class MCTS:
             while not isEnd(grid):
                 action = np.random.randint(0,4)
                 grid = move_grid(grid, action)
-                value += 1
-        lock.acquire()
-        self.values[first_action] += value        
-        lock.release()
+                value += 1        
+            self.values[first_action] += value        
+       
         
-
     def simulWithThread(self):
         threads = []
         for first_action in range(4):
@@ -67,23 +74,25 @@ class MCTS:
         return np.argmax(self.values)
 
 def main():
-    start_time = time.time()
     mcts = MCTS(n_sim)
     score_list = []
     for e in range(n_episode):
+        start_time = time.time()
         done = False
-        grid = env.reset()
+        grid = env.reset(False)
         while not done:
             mcts.setRootGrid(grid)
-            action = mcts.slmulation()
-            #action = mcts.simulWithThread()
-            grid, _, done, info = env.step(action, True)
+            #action = mcts.slmulation()
+            action = mcts.simulWithThread()
+            grid, _, done = env.step(action)
+            info = np.max(env.game.grid)
         score_list.append(info)
         average_score = np.mean(score_list[-100:])        
         spending_time = time.time() - start_time
         print(f"Episode : {e+1} / {n_episode}, Max Tile : {info}, Average: {average_score:.1f}")
         print(f"SPENDING TIME : {spending_time:.1f} Sec")
-        time.sleep(3)
+    pygame.quit()
+    env.close()
 
 if __name__ == "__main__":
     main()
