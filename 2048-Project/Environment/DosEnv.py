@@ -37,7 +37,7 @@ class _2048:
         return grid, reward, done, int(np.max(grid))
 
 
-    def _calcReward(self, grid, changed, done):        
+    def _calcReward(self, grid, changed, done):
         if not changed:
             return 0        
         return np.sum(grid) - np.sum(self.grid)

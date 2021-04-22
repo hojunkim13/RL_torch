@@ -25,11 +25,13 @@ class Node:
         self.W = [0, 0, 0, 0]
         self.N = [0, 0, 0, 0]
         self.child = [0, 0, 0, 0]
+        self.legal_moves = [1,1,1,1]
 
     def calcUCT(self, c_uct = 0.1):        
-        Qs = [w/(n+1e-8) for w, n in zip(self.W, self.N)]
-        exp_components = [c_uct * np.sqrt(np.log(sum(self.N)) / (n)) for n in self.N]
+        Qs = [w/n for w, n in zip(self.W, self.N)]
+        exp_components = [c_uct * np.sqrt(np.log(sum(self.N)) / n) for n in self.N]
         UCT_values = [q + exp_component for q, exp_component in zip(Qs, exp_components)]
+        UCT_values = np.where(self.legal_moves, UCT_values, -10)
         return np.argmax(UCT_values)
 
     def isLeaf(self):
@@ -40,6 +42,7 @@ class Node:
 
     def asRoot(self):
         self.parent = None
+        
 
 class MCTS:
     def __init__(self):
@@ -58,6 +61,7 @@ class MCTS:
 
     def selection(self):
         node = self.root_node
+        node.legal_moves = get_legal_moves(self.root_grid)
         self.act_history = []
         while not node.isLeaf():
             child_idx = node.calcUCT()
@@ -75,7 +79,7 @@ class MCTS:
         node.child[expand_act] = child_node
         return expand_act
 
-    def simulation(self, expand_act, k = 10):
+    def simulation(self, expand_act, k = 1):
         '''
         1. Move to leaf state fow action history
         2. Start simulation from leaf state
@@ -137,7 +141,7 @@ class MCTS:
         self.Q_data = []
     
 n_episode = 100
-n_sim = 400
+n_sim = 30
 env.goal = 999999
 
 def main():
@@ -151,10 +155,12 @@ def main():
         mcts.setRoot(grid)        
         while not done:        
             action = mcts.getAction(n_sim)
-            grid, reward, done, info = env.step(action)
+            if not mcts.root_node.legal_moves[action]:
+                print("warning")
+            grid, reward, done, info = env.step(action, False)
             score += reward
             mcts.setRoot(grid, action)            
-        mcts.saveMemory(e)
+        #mcts.saveMemory(e)
         score_list.append(score)
         average_score = np.mean(score_list[-100:])        
         spending_time = time.time() - start_time

@@ -31,16 +31,16 @@ class Node:
         UCT_values = []
         for idx in range(4):
             if not self.legal_moves[idx]:
-                UCT_values.append(0)
+                UCT_values.append(-10)
             else:
                 w = self.W[idx]
                 n = self.N[idx]
                 Q = w/n
                 exp_comp = c_uct * np.sqrt(np.log(sum(self.N)) / n)
-                UCT_values.append(Q + exp_comp)                
+                UCT_values.append(Q + exp_comp)
         return np.argmax(UCT_values)
 
-    def isLeaf(self):        
+    def isLeaf(self):
         for idx in range(4):
             if self.N[idx] == 0 and self.legal_moves[idx]:
                 return True
@@ -91,13 +91,14 @@ class MCTS:
         node.child[expand_act] = child_node
         return expand_act
 
-    def simulation(self, expand_act, k = 10):
+    def simulation(self, expand_act, k = 3):
         '''
-        1. Move to leaf state fow action history
+        1. Move to leaf state follow action history
         2. Start simulation from leaf state
         3. Calc average score via value network
         '''
         states = []
+        vs = []
         for _ in range(k):
             #sim to leaf grid
             grid = self.root_grid
@@ -108,14 +109,27 @@ class MCTS:
             grid = move_grid(grid, expand_act)
 
             #calc value via value network
-            state = preprocessing(grid)            
-            states.append(state)
+            # state = preprocessing(grid)            
+            # states.append(state)
+            v = self.rollout(grid)
+            vs.append(v)
             
-        state_batch = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
-        with torch.no_grad():
-            _, values = self.net(state_batch)
-        mean_value = values.mean().cpu().item()
+        # state_batch = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
+        # with torch.no_grad():
+        #     _, values = self.net(state_batch)
+        # mean_value = values.mean().cpu().item()
+        mean_value = np.mean(vs)
         return mean_value
+
+    def rollout(self, grid):
+        while not isEnd(grid):
+            action = np.random.randint(0, 4)
+            grid = move_grid(grid, action)
+        value = calc_value(grid)
+        return value
+                
+
+
 
     def backpropagation(self, leaf_node, value, expand_act):        
         node = leaf_node
@@ -136,10 +150,10 @@ class MCTS:
     def getAction(self, n_sim):
         for _ in range(n_sim):
             self.simCycle()
-        act = np.argmax(self.root_node.N)        
-        return act
+        probs = [n / sum(self.root_node.N) for n in self.root_node.N]
+        #act = np.argmax(self.root_node.N)        
+        return probs
        
-
     
 n_episode = 100
 n_sim = 400

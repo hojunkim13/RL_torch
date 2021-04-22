@@ -26,7 +26,11 @@ class Agent:
     def getAction(self, log):
         start_time = time.time()
         
-        action = self.mcts.getAction(self.n_sim)
+        probs = self.mcts.getAction(self.n_sim)
+        if self.step_count < 60:
+            action = np.random.choice(range(4), p = probs)
+        else:
+            action = np.argmax(probs)
         
 
         #Qs = [a/b for a,b in zip(self.mcts.root_node.W, self.mcts.root_node.N)]
@@ -38,9 +42,6 @@ class Agent:
         #     logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec")
         #     logger.info(f"# Q : {Qs}, N : {self.mcts.root_node.N}\n\n")
 
-        #safty
-        if self.mcts.root_node.legal_moves[action] == 0:
-            print("WARNING")
         self.step_count += 1
         return action
 
@@ -49,10 +50,10 @@ class Agent:
         self.memory.append(state)
 
     def learn(self, outcome):
-        try:
-            memory = random.sample(self.memory, self.batch_size)        
-        except ValueError:
-            memory = self.memory
+        # try:
+        #     memory = random.sample(self.memory, self.batch_size)        
+        # except ValueError:
+        memory = self.memory
 
         memory = np.array(memory, dtype = np.float32)
         S = torch.tensor(memory, dtype = torch.float).cuda().reshape(-1, *self.state_dim)
@@ -65,6 +66,7 @@ class Agent:
         value_loss.backward()
         self.optimizer.step()
         self.memory = []
+        return value_loss.item()
 
     def save(self, env_name):
         torch.save(self.net.state_dict(), f"./data/model/{env_name}_2048zero.pt")

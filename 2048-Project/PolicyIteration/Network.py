@@ -55,7 +55,7 @@ class Network(nn.Module):
                                     nn.Linear(4*4*1, 256),
                                     nn.ReLU(),                                    
                                     nn.Linear(256, 1),
-                                    #nn.Tanh(),
+                                    #nn.Tanh(),                                    
         )
 
         self.cuda()
@@ -66,5 +66,6 @@ class Network(nn.Module):
         policy = self.policy(x)
         policy = torch.distributions.Categorical(policy)
         value = self.value(x)
+        #value = (value + 1.) / 2.
         return policy, value
     
