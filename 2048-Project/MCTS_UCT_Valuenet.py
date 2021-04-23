@@ -1,8 +1,8 @@
 from Environment.Utils import *
 import numpy as np
 import os
-import time
 import torch
+import time
 
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
@@ -20,105 +20,123 @@ from Environment.DosEnv import _2048
 env = _2048()
 
 class Node:
-    def __init__(self, parent):
+    def __init__(self, parent, move_index):
         self.parent = parent
-        self.W = [0, 0, 0, 0]
-        self.N = [0, 0, 0, 0]
-        self.child = [0, 0, 0, 0]
-        self.legal_moves = [1, 1, 1, 1]
+        self.move_index = move_index
+        self.W = {0:0, 1:0, 2:0, 3:0}
+        self.N = {0:0, 1:0, 2:0, 3:0}
+        self.child = {}
+        self.legal_moves = [1,1,1,1]
 
-    def calcUCT(self, c_uct = 0.1):                
-        UCT_values = []
-        for idx in range(4):
+    def calcUCT(self, c_uct = 1):                
+        UCT_values = {}
+        Qs = {}
+        EXPs = {}
+        N_total = sum(self.N.values())
+        for idx in self.child.keys():
             if not self.legal_moves[idx]:
-                UCT_values.append(-10)
-            else:
-                w = self.W[idx]
-                n = self.N[idx]
-                Q = w/n
-                exp_comp = c_uct * np.sqrt(np.log(sum(self.N)) / n)
-                UCT_values.append(Q + exp_comp)
-        return np.argmax(UCT_values)
+                continue
+            w = self.W[idx]
+            n = self.N[idx]
+            Qs[idx] = w/n            
+            EXPs[idx] = c_uct * np.sqrt(np.log(N_total) / n)
+        
+        for (idx, Q), exp in zip(Qs.items(), EXPs.values()):
+            UCT_values[idx] = Q + exp
+        return UCT_values
 
-    def isLeaf(self):
-        for idx in range(4):
-            if self.N[idx] == 0 and self.legal_moves[idx]:
-                return True
-        return False
+    def isLeaf(self):        
+        return sum(self.legal_moves) != len(self.child)
 
     def isRoot(self):
         return self.parent is None
 
     def asRoot(self):
         self.parent = None
+        self.move_index = None
+        
+    def getPath(self, path_list):
+        if not self.isRoot():
+            path_list.insert(0, self.move_index)
+            self.parent.getPath(path_list)
+        
 
 class MCTS:
     def __init__(self, net):
         self.net = net
 
-    def setRoot(self, grid, act = None):
-        if act is not None:
-            new_root_node = self.root_node.child[act]
-            new_root_node.asRoot()
-            self.root_node = new_root_node            
-        else:
-            self.root_node = Node(None)
+    def reset(self, grid):
+        self.root_node = Node(None, None)
         self.root_grid = grid
         self.root_node.legal_moves = get_legal_moves(grid)
+
+
+    def setRoot(self, grid, act): 
+        new_root_node = self.root_node.child[act]
+        new_root_node.asRoot()
+
+        self.root_node = new_root_node            
+        self.root_grid = grid
+        self.root_node.legal_moves = get_legal_moves(grid)
+        
         for idx in range(4):
             if not self.root_node.legal_moves[idx]:
                 self.root_node.N[idx] = 0
                 self.root_node.W[idx] = 0
-                self.root_node.child[idx] = 0        
+                try:
+                    del self.root_node.child[idx]
+                except KeyError:
+                    pass
         
 
-    def selection(self):
-        node = self.root_node
-        self.act_history = []
-        while not node.isLeaf():
-            child_idx = node.calcUCT()
-            node = node.child[child_idx]
-            self.act_history.append(child_idx)
-        return node
+    def selection(self, node):
+        if node.isLeaf():
+            return node
+        else:
+            UCT_values = node.calcUCT()
+            try:
+                max_value_idx = max(UCT_values, key=UCT_values.get)
+            except:
+                UCT_values = node.calcUCT()
+            node = node.child[max_value_idx]
+            return self.selection(node)
+        
 
-    def expansion(self, node):
-        zero_indices = []
-        for idx in range(4):
-            if node.child[idx] == 0:
-                zero_indices.append(idx)
-        expand_act = np.random.choice(zero_indices)
-        child_node = Node(node)
-        node.child[expand_act] = child_node
-        return expand_act
+    def expansion(self, node):                
+        for idx, n in node.N.items():
+            if n == 0:
+                break
+        child_node = Node(node, idx)
+        node.child[idx] = child_node
+        return child_node
 
-    def simulation(self, expand_act, k = 3):
+    def simulation(self, child_node, k = 30):
         '''
         1. Move to leaf state follow action history
         2. Start simulation from leaf state
         3. Calc average score via value network
         '''
         states = []
-        vs = []
+        act_history = []
+        #vs = []
+        child_node.getPath(act_history)
+        
         for _ in range(k):
-            #sim to leaf grid
-            grid = self.root_grid
-            for act in self.act_history:
-                grid = move_grid(grid, act)
-
-            #expanded grid
-            grid = move_grid(grid, expand_act)
-
-            #calc value via value network
-            # state = preprocessing(grid)            
-            # states.append(state)
-            v = self.rollout(grid)
-            vs.append(v)
+            #sim to child grid
+            grid = self.root_grid            
+            for act in act_history:
+                grid = move_grid(grid, act)                        
+            state = preprocessing(grid)            
+            states.append(state)
+            # v = self.rollout(grid)
+            # vs.append(v)
             
-        # state_batch = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
-        # with torch.no_grad():
-        #     _, values = self.net(state_batch)
-        # mean_value = values.mean().cpu().item()
-        mean_value = np.mean(vs)
+        state_batch = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
+        with torch.no_grad():
+            _, values = self.net(state_batch)            
+            values = torch.clip(values, 0, None)
+        mean_value = values.mean().cpu().item()        
+        #mean_value = np.mean(vs)
         return mean_value
 
     def rollout(self, grid):
@@ -129,37 +147,39 @@ class MCTS:
         return value
                 
 
+    def backpropagation(self, node, value):                
+        if node.parent is not None:
+            node.parent.W[node.move_index] += value
+            node.parent.N[node.move_index] += 1
+            self.backpropagation(node.parent, value)
+                
+    def search_cycle(self):
+        leaf_node = self.selection(self.root_node)
+        expanded_node = self.expansion(leaf_node)
+        expanded_value = self.simulation(expanded_node)
+        self.backpropagation(expanded_node, expanded_value)
 
-
-    def backpropagation(self, leaf_node, value, expand_act):        
-        node = leaf_node
-        act_history = self.act_history.copy()
-        act_history.append(expand_act)
-        for act in reversed(act_history):
-            node.W[act] += value
-            node.N[act] += 1
-            node = node.parent
-            
-        
-    def simCycle(self):        
-        leaf_node = self.selection()
-        expand_act = self.expansion(leaf_node)
-        grid_value = self.simulation(expand_act)
-        self.backpropagation(leaf_node, grid_value, expand_act)
-
-    def getAction(self, n_sim):
+    def search(self, n_sim):
         for _ in range(n_sim):
-            self.simCycle()
-        probs = [n / sum(self.root_node.N) for n in self.root_node.N]
-        #act = np.argmax(self.root_node.N)        
-        return probs
+            self.search_cycle()
+        #Max-Robust child
+        while True:
+            UCT_values = self.root_node.calcUCT()
+            max_value_idx = max(UCT_values, key=UCT_values.get)
+            max_visit_idx = max(self.root_node.N, key = self.root_node.N.get)
+            if max_value_idx == max_visit_idx:
+                break
+            else:
+                self.search_cycle()
+        return max_visit_idx
        
     
-n_episode = 100
-n_sim = 400
-env.goal = 999999
+
 
 def main():
+    n_episode = 100
+    n_sim = 400
+    env.goal = 999999
     mcts = MCTS()
     score_list = []
     for e in range(n_episode):

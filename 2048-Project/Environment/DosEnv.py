@@ -11,9 +11,9 @@ class _2048:
                             logic.move_right,
                             logic.move_down,                            
                             ]
-        self.goal = 2048        
+        self.goal = 999999        
 
-    def step(self, action, render = False):
+    def step(self, action):
         action = int(action)
         grid, changed = self.action_space[action](self.grid)
         if changed:
@@ -27,18 +27,12 @@ class _2048:
             
         reward = self._calcReward(grid, changed, done)
         self.score += reward
-        self.grid = grid
-        if render:
-            self.render()
-            act_name = {0:"LEFT", 1:"UP", 2:"RIGHT", 3:"DOWN"}[action]
-            t_log = time.time() - self.time_log
-            self.time_log = time.time()
-            print(f"Move Direction : {act_name}, Thinking time: {t_log:.2f} sec")
+        self.grid = grid        
         return grid, reward, done, int(np.max(grid))
 
 
     def _calcReward(self, grid, changed, done):
-        if not changed:
+        if (not changed) or done:
             return 0        
         return np.sum(grid) - np.sum(self.grid)
     
@@ -53,7 +47,7 @@ class _2048:
         print(self.grid[0])
         print(self.grid[1])
         print(self.grid[2])
-        print(self.grid[3])
-    
+        print(self.grid[3])        
+
     def close(self):
         pass

@@ -14,7 +14,7 @@ n_episode = 10000
 
 agent = Agent((16,4,4), 4, lr, batch_size, n_sim)
 env = _2048()
-#agent.load("2048")
+agent.load("2048")
 
 
 def main():
@@ -24,18 +24,18 @@ def main():
         grid = env.reset()
         score = 0
         agent.step_count = 0
-        agent.mcts.setRoot(grid)
+        agent.mcts.reset(grid)
         log = (e) % 10 == 0
         if log:
-            logger.info(f"EPISODE {e+1} ##########")
             logger.info("########################")
+            logger.info(f"##### EPISODE {e+1}#####")
             logger.info("########################")
             logger.info("########################")
         while not done:
             action = agent.getAction(log)
             if not agent.mcts.root_node.legal_moves[action]:
                 print("warning")
-            grid, reward, done, info = env.step(action, False)    
+            grid, reward, done, info = env.step(action)    
             score += reward
             agent.storeTransition(grid)
             agent.mcts.setRoot(grid, action)

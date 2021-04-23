@@ -6,9 +6,9 @@ from Environment.Utils import *
 from MCTS_UCT_Valuenet import MCTS
 import torch
 import numpy as np
-import random
-import time
 from Logger import logger
+import time
+
 
 
 class Agent:
@@ -26,21 +26,15 @@ class Agent:
     def getAction(self, log):
         start_time = time.time()
         
-        probs = self.mcts.getAction(self.n_sim)
-        if self.step_count < 60:
-            action = np.random.choice(range(4), p = probs)
-        else:
-            action = np.argmax(probs)
-        
-
-        #Qs = [a/b for a,b in zip(self.mcts.root_node.W, self.mcts.root_node.N)]
-        # if log:
-        #     for line in self.mcts.root_grid:
-        #         logger.info(line)
-        #     act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
-        #     time_spend = time.time() - start_time
-        #     logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec")
-        #     logger.info(f"# Q : {Qs}, N : {self.mcts.root_node.N}\n\n")
+        action = self.mcts.search(self.n_sim)
+                
+        if log:
+            for line in self.mcts.root_grid:
+                logger.info(f"{line}")        
+            time_spend = time.time() - start_time
+            act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
+            logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec")
+            logger.info(f"# Action : {act_dir}, N : {self.mcts.root_node.N.values}\n\n")            
 
         self.step_count += 1
         return action
@@ -50,12 +44,7 @@ class Agent:
         self.memory.append(state)
 
     def learn(self, outcome):
-        # try:
-        #     memory = random.sample(self.memory, self.batch_size)        
-        # except ValueError:
-        memory = self.memory
-
-        memory = np.array(memory, dtype = np.float32)
+        memory = np.array(self.memory, dtype = np.float32)
         S = torch.tensor(memory, dtype = torch.float).cuda().reshape(-1, *self.state_dim)
                 
         _, value = self.net(S)
