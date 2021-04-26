@@ -28,7 +28,7 @@ class Node:
         self.child = {}
         self.legal_moves = [1,1,1,1]
 
-    def calcUCT(self, c_uct = 1):                
+    def calcUCT(self, c_uct = 0.5):                
         UCT_values = {}
         Qs = {}
         EXPs = {}
@@ -72,32 +72,34 @@ class MCTS:
 
 
     def setRoot(self, grid, act): 
-        new_root_node = self.root_node.child[act]
-        new_root_node.asRoot()
-
-        self.root_node = new_root_node            
+        self.root_node = Node(None, None)
         self.root_grid = grid
-        self.root_node.legal_moves = get_legal_moves(grid)
+        self.root_grid.legal_moves = get_legal_moves(grid)
+        # new_root_node = self.root_node.child[act]
+        # new_root_node.asRoot()
+
+        # #self.root_node = new_root_node            
+        # self.root_grid = grid
+        # self.root_node.legal_moves = get_legal_moves(grid)
         
-        for idx in range(4):
-            if not self.root_node.legal_moves[idx]:
-                self.root_node.N[idx] = 0
-                self.root_node.W[idx] = 0
-                try:
-                    del self.root_node.child[idx]
-                except KeyError:
-                    pass
+        # for idx in range(4):
+        #     if not self.root_node.legal_moves[idx]:
+        #         self.root_node.N[idx] = 0
+        #         self.root_node.W[idx] = 0
+        #         try:
+        #             del self.root_node.child[idx]
+        #         except KeyError:
+        #             pass
         
+            
 
     def selection(self, node):
         if node.isLeaf():
             return node
         else:
-            UCT_values = node.calcUCT()
-            try:
-                max_value_idx = max(UCT_values, key=UCT_values.get)
-            except:
-                UCT_values = node.calcUCT()
+            UCT_values = node.calcUCT()            
+            max_value_idx = max(UCT_values, key=UCT_values.get)
+            
             node = node.child[max_value_idx]
             return self.selection(node)
         
@@ -110,7 +112,7 @@ class MCTS:
         node.child[idx] = child_node
         return child_node
 
-    def simulation(self, child_node, k = 30):
+    def simulation(self, child_node, k = 10):
         '''
         1. Move to leaf state follow action history
         2. Start simulation from leaf state

@@ -6,15 +6,15 @@ from Logger import logger
 from Environment.DosEnv import _2048
 from Environment.Utils import calc_value
 
-lr = 1e-3
+lr = 1e-2
 batch_size = 256
-n_sim = 50
+n_sim = 100
 
 n_episode = 10000
 
 agent = Agent((16,4,4), 4, lr, batch_size, n_sim)
 env = _2048()
-agent.load("2048")
+#agent.load("2048")
 
 
 def main():
