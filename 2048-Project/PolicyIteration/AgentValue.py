@@ -6,13 +6,14 @@ from Environment.Utils import *
 from MCTS_UCT_Valuenet import MCTS
 import torch
 import numpy as np
+import random
 from Logger import logger
 import time
-
+from collections import deque
 
 
 class Agent:
-    def __init__(self, state_dim, action_dim, lr, batch_size, n_sim):
+    def __init__(self, state_dim, action_dim, lr, batch_size, n_sim, maxlen):
         self.net = Network(state_dim, action_dim)
         self.optimizer = Adam(self.net.parameters(), lr = lr, weight_decay= 1e-4, betas=(0.8, 0.999))
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)
@@ -20,8 +21,11 @@ class Agent:
         self.n_sim = n_sim
         self.state_dim = state_dim
         self.batch_size = batch_size
-        self.memory = []
         self.mcts = MCTS(self.net)
+        self.memory = deque(maxlen = maxlen)
+        self.outcome_memory = deque(maxlen = maxlen)
+        self.tmp_memory = deque()
+        
 
     def getAction(self, log):
         start_time = time.time()
@@ -38,23 +42,28 @@ class Agent:
 
         self.step_count += 1
         return action
-
-    def storeTransition(self, *transition):
-        state = preprocessing(transition[0])
-        self.memory.append(state)
-
-    def learn(self, outcome):
-        memory = np.array(self.memory, dtype = np.float32)
-        S = torch.tensor(memory, dtype = torch.float).cuda().reshape(-1, *self.state_dim)
+    
+    
+    def pushMemory(self, tmp_memory, outcome):
+        outcome = deque([outcome] * len(tmp_memory))
+        self.outcome_memory += outcome
+        self.memory += tmp_memory
                 
+
+    def learn(self):
+        idx_max = len(self.memory)        
+        indice = random.sample(range(idx_max), min(self.batch_size, idx_max))
+        memory = np.array(self.memory, dtype = np.float32)[indice]
+        outcome = np.array(self.outcome_memory, dtype = np.float32)[indice]
+
+        S = torch.tensor(memory, dtype = torch.float).cuda().reshape(-1, *self.state_dim)                
         _, value = self.net(S)
-        outcome = torch.tensor(outcome, dtype = torch.float).cuda()
+        outcome = torch.tensor(outcome, dtype = torch.float).cuda().view(*value.shape)
         value_loss = torch.square(value - outcome).mean()
         
         self.optimizer.zero_grad()
         value_loss.backward()
-        self.optimizer.step()
-        self.memory = []
+        self.optimizer.step()        
         return value_loss.item()
 
     def save(self, env_name):

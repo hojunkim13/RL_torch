@@ -28,7 +28,7 @@ class Node:
         self.child = {}
         self.legal_moves = [1,1,1,1]
 
-    def calcUCT(self, c_uct = 0.5):                
+    def calcUCT(self, c_uct = 0.1):                
         UCT_values = {}
         Qs = {}
         EXPs = {}
@@ -45,16 +45,24 @@ class Node:
             UCT_values[idx] = Q + exp
         return UCT_values
 
-    def isLeaf(self):        
-        return sum(self.legal_moves) != len(self.child)
+    def isLeaf(self):
+        if not self.isRoot():
+            return len(self.child) != 4
+        cntr = 0
+        for legal in self.legal_moves:                        
+            if not legal:
+                cntr +=1
+                continue            
+            try:
+                self.child[cntr]
+            except KeyError:
+                return True
+            cntr +=1
+        return False
 
     def isRoot(self):
         return self.parent is None
-
-    def asRoot(self):
-        self.parent = None
-        self.move_index = None
-        
+   
     def getPath(self, path_list):
         if not self.isRoot():
             path_list.insert(0, self.move_index)
@@ -66,33 +74,10 @@ class MCTS:
         self.net = net
 
     def reset(self, grid):
-        self.root_node = Node(None, None)
         self.root_grid = grid
+        self.root_node = Node(None, None)
         self.root_node.legal_moves = get_legal_moves(grid)
-
-
-    def setRoot(self, grid, act): 
-        self.root_node = Node(None, None)
-        self.root_grid = grid
-        self.root_grid.legal_moves = get_legal_moves(grid)
-        # new_root_node = self.root_node.child[act]
-        # new_root_node.asRoot()
-
-        # #self.root_node = new_root_node            
-        # self.root_grid = grid
-        # self.root_node.legal_moves = get_legal_moves(grid)
         
-        # for idx in range(4):
-        #     if not self.root_node.legal_moves[idx]:
-        #         self.root_node.N[idx] = 0
-        #         self.root_node.W[idx] = 0
-        #         try:
-        #             del self.root_node.child[idx]
-        #         except KeyError:
-        #             pass
-        
-            
-
     def selection(self, node):
         if node.isLeaf():
             return node
