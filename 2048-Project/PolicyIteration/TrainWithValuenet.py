@@ -9,7 +9,7 @@ from collections import deque
 
 lr = 1e-3
 batch_size = 128
-n_sim = 100
+n_sim = 50
 maxlen = 10000
 n_episode = 10000
 state_dim = (16,4,4)
@@ -34,6 +34,7 @@ def main():
             logger.info("########################")
             logger.info("########################")
         while not done:
+            #env.render()
             tmp_memory.append(preprocessing(grid))
             agent.mcts.reset(grid)
             action = agent.getAction(log)

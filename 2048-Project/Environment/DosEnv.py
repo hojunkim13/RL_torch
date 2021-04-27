@@ -11,7 +11,8 @@ class _2048:
                             logic.move_right,
                             logic.move_down,                            
                             ]
-        self.goal = 999999        
+        self.goal = 999999
+
 
     def step(self, action):
         action = int(action)
@@ -27,9 +28,9 @@ class _2048:
             
         reward = self._calcReward(grid, changed, done)
         self.score += reward
-        self.grid = grid        
-        return grid, reward, done, int(np.max(grid))
+        self.grid = grid
 
+        return grid, reward, done, np.max(grid)
 
     def _calcReward(self, grid, changed, done):
         if (not changed) or done:
@@ -47,7 +48,10 @@ class _2048:
         print(self.grid[0])
         print(self.grid[1])
         print(self.grid[2])
-        print(self.grid[3])        
+        print(self.grid[3])
+        spending_time = time.time() - self.time_log
+        self.time_log = time.time()
+        print(spending_time)
 
     def close(self):
         pass

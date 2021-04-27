@@ -28,7 +28,7 @@ class Node:
         self.child = {}
         self.legal_moves = [1,1,1,1]
 
-    def calcUCT(self, c_uct = 0.1):                
+    def calcUCT(self, c_uct = 0.3):                
         UCT_values = {}
         Qs = {}
         EXPs = {}
@@ -103,6 +103,7 @@ class MCTS:
         2. Start simulation from leaf state
         3. Calc average score via value network
         '''
+        values = []
         states = []
         act_history = []
         #vs = []
@@ -110,20 +111,20 @@ class MCTS:
         
         for _ in range(k):
             #sim to child grid
-            grid = self.root_grid            
+            grid = self.root_grid
             for act in act_history:
-                grid = move_grid(grid, act)                        
-            state = preprocessing(grid)            
-            states.append(state)
-            # v = self.rollout(grid)
-            # vs.append(v)
-            
-        state_batch = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
+                grid = move_grid(grid, act)
+            if isEnd(grid):
+                value = calc_value(grid)                
+                values.append(value)
+            else:
+                state = preprocessing(grid)            
+                states.append(state)                            
+        states = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
         with torch.no_grad():
-            _, values = self.net(state_batch)            
-            values = torch.clip(values, 0, None)
-        mean_value = values.mean().cpu().item()        
-        #mean_value = np.mean(vs)
+            _, values_ = self.net(states)
+        values_ = torch.clip(values_, 0, None).sum().cpu().item()          
+        mean_value = (sum(values) + values_ ) / k
         return mean_value
 
     def rollout(self, grid):
