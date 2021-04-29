@@ -7,8 +7,8 @@ from Environment.DosEnv import _2048
 from Environment.Utils import calc_value, preprocessing
 from collections import deque
 
-lr = 1e-3
-batch_size = 128
+lr = 5e-5
+batch_size = 256
 n_sim = 50
 maxlen = 10000
 n_episode = 10000
