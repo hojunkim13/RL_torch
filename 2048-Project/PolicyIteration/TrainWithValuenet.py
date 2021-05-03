@@ -9,7 +9,7 @@ from collections import deque
 
 lr = 5e-5
 batch_size = 256
-n_sim = 50
+n_sim = 100
 maxlen = 10000
 n_episode = 10000
 state_dim = (16,4,4)

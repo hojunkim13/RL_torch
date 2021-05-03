@@ -180,7 +180,7 @@ def main():
             action = mcts.getAction(n_sim)
             grid, reward, done, info = env.step(action)
             score += reward
-            mcts.setRoot(grid, action)            
+            mcts.setRoot(grid, action)
         mcts.saveMemory(e)
         score_list.append(score)
         average_score = np.mean(score_list[-100:])        
