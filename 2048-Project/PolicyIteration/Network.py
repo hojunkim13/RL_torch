@@ -2,45 +2,47 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class ResidualBlock(nn.Module):
-    def __init__(self, *args):
-        super(ResidualBlock, self).__init__()
+class conv_layer(nn.Module):
+    def __init__(self, in_channel, out_channel):
+        super(conv_layer, self).__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(*args),
-            nn.BatchNorm2d(args[1]),
+            nn.Conv2d(in_channel, out_channel, 3, 1, 1),
+            nn.BatchNorm2d(out_channel),
             nn.ReLU(),
         )
+
+        
+    def forward(self, x):
+        output = self.block(x)
+        return output
+        
+class residual_layer(nn.Module):
+    def __init__(self, channel):
+        super(residual_layer, self).__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(channel, channel, 3, 1, 1),
+            nn.BatchNorm2d(channel),
+            nn.ReLU(),
+            nn.Conv2d(channel, channel, 3, 1, 1),
+            nn.BatchNorm2d(channel),
+            nn.ReLU(),
+        )
+        self.relu = nn.ReLU()
         
     def forward(self, x):
         connect = self.block(x)
         output = F.relu(connect + x)
         return output
-        
 
 
 class Network(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Network, self).__init__()
-        self.conv_block = nn.Sequential(nn.Conv2d(state_dim[0], 256, 1, 1, 0),
-                                        nn.BatchNorm2d(256),
-                                        nn.ReLU()
-                                        )
+        self.conv_block = conv_layer(state_dim[0], 128)
 
-        self.res_blocks = nn.Sequential(
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-                            ResidualBlock(256, 256, 1, 1, 0),
-        )
-                            
+        self.res_blocks = nn.Sequential(*[residual_layer(128)]*6)                   
     
-        self.policy = nn.Sequential(nn.Conv2d(256, 2, 1, 1, 0),
+        self.policy = nn.Sequential(nn.Conv2d(128, 2, 1, 1, 0),
                                     nn.BatchNorm2d(2),
                                     nn.ReLU(),
                                     nn.Flatten(),
@@ -48,7 +50,7 @@ class Network(nn.Module):
                                     nn.Softmax(-1),
                                     )
 
-        self.value = nn.Sequential(nn.Conv2d(256, 1, 1, 1, 0),
+        self.value = nn.Sequential(nn.Conv2d(128, 1, 1, 1, 0),
                                     nn.BatchNorm2d(1),
                                     nn.ReLU(),
                                     nn.Flatten(),
@@ -65,7 +67,6 @@ class Network(nn.Module):
         x = self.res_blocks(x)            
         policy = self.policy(x)
         policy = torch.distributions.Categorical(policy)
-        value = self.value(x)
-        #value = (value + 1.) / 2.
+        value = self.value(x)        
         return policy, value
     
