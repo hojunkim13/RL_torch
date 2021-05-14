@@ -8,7 +8,6 @@ import torch
 import numpy as np
 import random
 from Logger import logger
-import time
 from collections import deque
 
 
@@ -16,54 +15,57 @@ class Agent:
     def __init__(self, state_dim, action_dim, lr, batch_size, n_sim, maxlen):
         self.net = Network(state_dim, action_dim)
         self.optimizer = Adam(self.net.parameters(), lr = lr, weight_decay= 1e-4, betas=(0.8, 0.999))
-        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)
-                
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)                
         self.n_sim = n_sim
         self.state_dim = state_dim
         self.batch_size = batch_size
         self.mcts = MCTS(self.net)
-        self.memory = deque(maxlen = maxlen)
-        self.outcome_memory = deque(maxlen = maxlen)
-        self.tmp_memory = deque()
-        
+        self.state_memory = deque(maxlen = maxlen)
+        self.tmp_state_memory = deque()
+        self.reward_memory = deque(maxlen = maxlen)
+        self.tmp_reward_memory = deque()
 
-    def getAction(self, log):
-        start_time = time.time()
-        
-        action = self.mcts.search(self.n_sim)
-                
-        if log:
-            for line in self.mcts.root_grid:
-                logger.info(f"{line}")        
-            time_spend = time.time() - start_time
-            act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
-            logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec")
-            logger.info(f"# Action : {act_dir}, N : {self.mcts.root_node.N.values}\n\n")            
-
+    def getAction(self, grid):        
+        action = self.mcts.search(self.n_sim, grid)
         self.step_count += 1
         return action
     
     
-    def pushMemory(self, tmp_memory, outcome):
-        outcome = deque([outcome] * len(tmp_memory))
-        self.outcome_memory += outcome
-        self.memory += tmp_memory
+    def storeTranstion(self, *transition):
+        state = transition[0]
+        reward = transition[1]
+        self.tmp_state_memory.append(state)
+        self.tmp_reward_memory.append(reward)
+
+    def pushMemory(self):                
+        n_step_rewards = deque()
+        for idx in range(len(self.tmp_reward_memory)):
+            n_step_reward = sum(np.array(self.tmp_reward_memory)[idx:idx+10])
+            n_step_rewards.append(n_step_reward)
+        self.state_memory += self.tmp_state_memory
+        self.reward_memory += n_step_rewards
+        
+        self.tmp_state_memory.clear()
+        self.tmp_reward_memory.clear()            
+
+        
                 
-
     def learn(self):
-        idx_max = len(self.memory)        
-        indice = random.sample(range(idx_max), min(self.batch_size, idx_max))
-        memory = np.array(self.memory, dtype = np.float32)[indice]
-        outcome = np.array(self.outcome_memory, dtype = np.float32)[indice]
+        idx_max = len(self.state_memory)
+        max_sample_n = min(self.batch_size, idx_max)
+        indice = random.sample(range(idx_max), max_sample_n)
+        states = np.array(self.state_memory, dtype = np.float32)[indice]
+        rewards = np.array(self.reward_memory, dtype = np.float32)[indice]
 
-        S = torch.tensor(memory, dtype = torch.float).cuda().reshape(-1, *self.state_dim)                
+        S = torch.tensor(states, dtype = torch.float).cuda().reshape(-1, *self.state_dim)                
         _, value = self.net(S)
-        outcome = torch.tensor(outcome, dtype = torch.float).cuda().view(*value.shape)
+        outcome = torch.tensor(rewards, dtype = torch.float).cuda().view(*value.shape)
         value_loss = torch.square(value - outcome).mean()
         
         self.optimizer.zero_grad()
         value_loss.backward()
-        self.optimizer.step()        
+        self.optimizer.step()
+
         return value_loss.item()
 
     def save(self, env_name):

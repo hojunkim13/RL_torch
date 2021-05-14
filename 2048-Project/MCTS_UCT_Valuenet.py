@@ -72,12 +72,7 @@ class Node:
 class MCTS:
     def __init__(self, net):
         self.net = net
-
-    def reset(self, grid):
-        self.root_grid = grid
-        self.root_node = Node(None, None)
-        self.root_node.legal_moves = get_legal_moves(grid)
-        
+    
     def selection(self, node):
         if node.isLeaf():
             return node
@@ -97,35 +92,29 @@ class MCTS:
         node.child[idx] = child_node
         return child_node
 
-    def simulation(self, child_node, k = 10):
+    def simulation(self, child_node):
         '''
         1. Move to leaf state follow action history
         2. Start simulation from leaf state
         3. Calc average score via value network
         '''
-        values = []
-        states = []
         act_history = []
-        #vs = []
         child_node.getPath(act_history)
         
-        for _ in range(k):
-            #sim to child grid
-            grid = self.root_grid
-            for act in act_history:
-                grid = move_grid(grid, act)
-            if isEnd(grid):
-                value = calc_value(grid)                
-                values.append(value)
-            else:
-                state = preprocessing(grid)            
-                states.append(state)                            
-        states = torch.tensor(states, dtype = torch.float).cuda().view(-1,16,4,4)
-        with torch.no_grad():
-            _, values_ = self.net(states)
-        values_ = torch.clip(values_, 0, None).sum().cpu().item()          
-        mean_value = (sum(values) + values_ ) / k
-        return mean_value
+        #sim to child grid
+        grid = self.root_grid
+        for act in act_history:
+            grid = move_grid(grid, act)
+        
+        if isEnd(grid):
+            value = 0
+        else:
+            state = preprocessing(grid)                                  
+            state = torch.tensor(state, dtype = torch.float).cuda().view(-1,16,4,4)
+            with torch.no_grad():
+                _, value = self.net(state)
+            value = torch.clip(value, 0, None).sum().cpu().item()          
+        return value
 
     def rollout(self, grid):
         while not isEnd(grid):
@@ -147,23 +136,20 @@ class MCTS:
         expanded_value = self.simulation(expanded_node)
         self.backpropagation(expanded_node, expanded_value)
 
-    def search(self, n_sim):
+    def search(self, n_sim, grid):
+        self.root_grid = grid
+        self.root_node = Node(None, None)
+        self.root_node.legal_moves = get_legal_moves(grid)
         for _ in range(n_sim):
             self.search_cycle()
         #Max-Robust child
-        while True:
-            UCT_values = self.root_node.calcUCT()
-            max_value_idx = max(UCT_values, key=UCT_values.get)
-            max_visit_idx = max(self.root_node.N, key = self.root_node.N.get)
-            if max_value_idx == max_visit_idx:
-                break
-            else:
-                self.search_cycle()
-        return max_visit_idx
+        
+        UCT_values = self.root_node.calcUCT()
+        max_value_idx = max(UCT_values, key=UCT_values.get)
+        #max_visit_idx = max(self.root_node.N, key = self.root_node.N.get)
+        return max_value_idx
        
     
-
-
 def main():
     n_episode = 100
     n_sim = 400

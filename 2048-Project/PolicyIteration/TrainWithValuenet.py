@@ -4,28 +4,28 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PolicyIteration.AgentValue import Agent
 from Logger import logger
 from Environment.DosEnv import _2048
-from Environment.Utils import calc_value, preprocessing
+from Environment.Utils import preprocessing
 from collections import deque
 
-lr = 5e-5
+lr = 1e-4
 batch_size = 256
 n_sim = 100
-maxlen = 10000
+maxlen = 50000
 n_episode = 10000
 state_dim = (16,4,4)
 action_dim = 4
 agent = Agent(state_dim, action_dim, lr, batch_size, n_sim, maxlen)
 env = _2048()
-agent.load("2048")
+#agent.load("2048")
 
 
 def main():
     score_list = []    
     for e in range(n_episode):        
         done = False
-        grid = env.reset()
-        tmp_memory = deque()
+        grid = env.reset()        
         score = 0
+        loss = 0
         agent.step_count = 0        
         log = (e) % 10 == 10
         if log:
@@ -35,18 +35,15 @@ def main():
             logger.info("########################")
         while not done:
             #env.render()
-            tmp_memory.append(preprocessing(grid))
-            agent.mcts.reset(grid)
-            action = agent.getAction(log)
+            action = agent.getAction(grid)
             if not agent.mcts.root_node.legal_moves[action]:
                 print("warning")
-            grid, reward, done, info = env.step(action)    
-            score += reward            
-        outcome = calc_value(grid)
-        agent.pushMemory(tmp_memory, outcome)
+            new_grid, reward, done, info = env.step(action)
+            agent.storeTranstion(preprocessing(grid), reward)
+            grid = new_grid
+            score += reward
+        agent.pushMemory()
         loss = agent.learn()
-
-        #done
         if (e+1) % 10 == 0:
             agent.save("2048")
         score_list.append(score)
