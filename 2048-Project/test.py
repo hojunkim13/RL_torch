@@ -1,10 +1,14 @@
-values = [0,0,0,0]    
-for first_action in range(4):
-    for sim in range(10000 // 4):
-        value = 0
-        while value != 100:
-            value += 1
-        #value = self.calcValue(grid)
-        values[first_action] += value
+def sum(n):
+    if n == 0:
+        return 0
+    else:
+        return sum(n - 1) + n
 
-print(values)
+
+def findPath(n, m):
+    if 1 in (n, m):
+        return 1
+    else:
+        return findPath(n - 1, m) + findPath(n, m-1)
+
+

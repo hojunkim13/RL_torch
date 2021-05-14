@@ -30,16 +30,16 @@ def move_grid(grid, direction):
 
 
 def get_legal_moves(grid):
-    # legal_moves = []
-    # for act_func in action_space:
-    #     if act_func(grid)[1]:
-    #         legal_moves.append(action_space.index(act_func))                       
     legal_moves = []
     for act_func in action_space:
         if act_func(grid)[1]:
-            legal_moves.append(1)
-        else:
-            legal_moves.append(0)    
+            legal_moves.append(action_space.index(act_func))                       
+    # legal_moves = []
+    # for act_func in action_space:
+    #     if act_func(grid)[1]:
+    #         legal_moves.append(1)
+    #     else:
+    #         legal_moves.append(0)    
     return legal_moves
 
 def free_cells(grid):
