@@ -7,7 +7,7 @@ from Environment.DosEnv import _2048
 from Environment.Utils import preprocessing
 from collections import deque
 
-lr = 1e-4
+lr = 1e-2
 batch_size = 256
 n_sim = 100
 maxlen = 50000
