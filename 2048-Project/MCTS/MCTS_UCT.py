@@ -61,10 +61,33 @@ class MCTS:
         '''
         1. Move to leaf state fow action history
         2. Start simulation from leaf state
+<<<<<<< HEAD
         3. Calc average score from terminal gridsoll
         '''                    
         grid = self.root_grid
         node = target_node
+=======
+        3. Calc average score from terminal grid
+        '''
+        values = []
+        for _ in range(k):
+            #sim to leaf grid
+            grid = self.root_grid
+            for act in self.act_history:
+                grid = move_grid(grid, act)
+
+            #expanded grid
+            grid = move_grid(grid, expand_act)
+
+            #sim to terminal grid
+            while not isEnd(grid):
+                act = np.random.randint(0, 4)
+                grid = move_grid(grid, act)
+            value = calc_value(grid)
+            values.append(value)
+
+        return np.mean(values)
+>>>>>>> 8dd72b4f6b159f929d46b61e46c1555371690ec0
 
         move_history = []
         while not node.isRoot():

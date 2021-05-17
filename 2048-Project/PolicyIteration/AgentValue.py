@@ -3,7 +3,7 @@ sys.path.append('c:\\Users\\KHJ\\Desktop\\deeplearn\\Reinforcement\\torch\\2048-
 from PolicyIteration.Network import Network
 from torch.optim import Adam
 from Environment.Utils import *
-from MCTS_UCT_Valuenet import MCTS
+from MCTS.MCTS_UCT_Valuenet import MCTS
 import torch
 import numpy as np
 import random

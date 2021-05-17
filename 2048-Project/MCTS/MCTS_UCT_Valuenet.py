@@ -93,11 +93,6 @@ class MCTS:
         return child_node
 
     def simulation(self, child_node):
-        '''
-        1. Move to leaf state follow action history
-        2. Start simulation from leaf state
-        3. Calc average score via value network
-        '''
         act_history = []
         child_node.getPath(act_history)
         

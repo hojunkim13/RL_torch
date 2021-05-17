@@ -16,7 +16,7 @@ state_dim = (16,4,4)
 action_dim = 4
 agent = Agent(state_dim, action_dim, lr, batch_size, n_sim, maxlen)
 env = _2048()
-#agent.load("2048")
+agent.load("2048")
 
 
 def main():
