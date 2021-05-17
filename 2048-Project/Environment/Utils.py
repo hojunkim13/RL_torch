@@ -22,7 +22,7 @@ action_space = [logic.move_left,
                 logic.move_down]
 
 
-def move_grid(grid, direction):
+def move_grid(grid, direction):    
     grid, changed = action_space[direction](grid)
     if changed:
         grid = spawn_new(grid)
@@ -30,16 +30,16 @@ def move_grid(grid, direction):
 
 
 def get_legal_moves(grid):
-    # legal_moves = []
-    # for act_func in action_space:
-    #     if act_func(grid)[1]:
-    #         legal_moves.append(action_space.index(act_func))                       
     legal_moves = []
     for act_func in action_space:
         if act_func(grid)[1]:
-            legal_moves.append(1)
-        else:
-            legal_moves.append(0)    
+            legal_moves.append(action_space.index(act_func))                       
+    # legal_moves = []
+    # for act_func in action_space:
+    #     if act_func(grid)[1]:
+    #         legal_moves.append(1)
+    #     else:
+    #         legal_moves.append(0)    
     return legal_moves
 
 def free_cells(grid):
@@ -47,7 +47,7 @@ def free_cells(grid):
 
 
 def move(grid, action):
-    moved, sum = 0, 0
+    moved = 0
     for row, column in CELLS[action]:
         for dr, dc in GET_DELTAS[action](row, column):
             # If the current tile is blank, but the candidate has value:
@@ -64,21 +64,18 @@ def move(grid, action):
                     moved += 1
             # When hitting a tile we stop trying.
                 break
-    if moved:
-        grid = spawn_new(grid)
-    return grid, moved, sum
+    return grid, moved
 
 
 def spawn_new(grid):
     """Spawn some new tiles."""
     free = free_cells(grid)
     x, y = random.choice(free)
-    grid[y][x] = random.randint(0, 10) and 2 or 4
+    new_tile = random.randint(0, 10) and 2 or 4
+    grid[y][x] = new_tile
     return grid
 
-def calc_value(grid, mag_decay = 1e+3):
-    # outcome = np.sum(grid) / mag_decay
-    # return np.clip(outcome, 0, 1)
+def calc_value(grid):
     return np.log(np.sum(grid))
 
         

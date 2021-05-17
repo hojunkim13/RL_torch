@@ -7,7 +7,7 @@ from Environment.DosEnv import _2048
 from Environment.Utils import preprocessing
 from collections import deque
 
-lr = 1e-2
+lr = 1e-4
 batch_size = 256
 n_sim = 100
 maxlen = 50000
@@ -16,7 +16,7 @@ state_dim = (16,4,4)
 action_dim = 4
 agent = Agent(state_dim, action_dim, lr, batch_size, n_sim, maxlen)
 env = _2048()
-#agent.load("2048")
+agent.load("2048")
 
 
 def main():

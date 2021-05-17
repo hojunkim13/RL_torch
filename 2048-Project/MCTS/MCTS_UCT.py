@@ -83,7 +83,7 @@ class MCTS:
         '''
         1. Move to leaf state fow action history
         2. Start simulation from leaf state
-        3. Calc average score from terminal gridsoll
+        3. Calc average score from terminal grid
         '''
         values = []
         for _ in range(k):
