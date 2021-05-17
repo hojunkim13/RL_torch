@@ -1,8 +1,8 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Environment.Utils import *
 import numpy as np
-import os
 import time
-import pickle
 
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
@@ -20,128 +20,90 @@ from Environment.DosEnv import _2048
 env = _2048()
 
 class Node:
-    def __init__(self, parent):
+    def __init__(self, parent, move, grid = None):
         self.parent = parent
-        self.W = [0, 0, 0, 0]
-        self.N = [0, 0, 0, 0]
-        self.child = [0, 0, 0, 0]
-        self.legal_moves = [1,1,1,1]
+        self.W = 0
+        self.N = 0
+        self.child = {}
+        self.move = move
+        if grid is None:
+            self.legal_moves = [1,1,1,1]
+        else:
+            self.legal_moves = get_legal_moves(grid)
+        self.untried_moves = self.legal_moves.copy()
 
-    def calcUCT(self, c_uct = 0.1):        
-        Qs = [w/n for w, n in zip(self.W, self.N)]
-        exp_components = [c_uct * np.sqrt(np.log(sum(self.N)) / n) for n in self.N]
-        UCT_values = [q + exp_component for q, exp_component in zip(Qs, exp_components)]
-        UCT_values = np.where(self.legal_moves, UCT_values, -10)
-        return np.argmax(UCT_values)
-
+    def calcUCT(self, c_uct = 0.3):
+        Q = self.W / self.N
+        exp_component = c_uct * np.sqrt(np.log(self.parent.N) / self.N)
+        return Q + exp_component        
+        
     def isLeaf(self):
-        return any([n == 0 for n in self.N])
+        return self.untried_moves != []
 
     def isRoot(self):
         return self.parent is None
-
-    def asRoot(self):
-        self.parent = None
         
-
 class MCTS:
-    def __init__(self):
-        self.Q_data = []
-        self.grid_data = []
-
-    def setRoot(self, grid, act = None):
-        if act is not None:
-            new_root_node = self.root_node.child[act]
-            new_root_node.asRoot()
-            self.root_node = new_root_node            
-        else:
-            self.root_node = Node(None)
-        self.root_grid = grid
-        
-
     def selection(self):
         node = self.root_node
-        node.legal_moves = get_legal_moves(self.root_grid)
-        self.act_history = []
-        while not node.isLeaf():
-            child_idx = node.calcUCT()
-            node = node.child[child_idx]
-            self.act_history.append(child_idx)
+        while not node.isLeaf():            
+            node = max(node.child.values(), key = Node.calcUCT)
         return node
 
-    def expansion(self, node):
-        zero_indices = []
-        for idx in range(4):
-            if node.child[idx] == 0:
-                zero_indices.append(idx)
-        expand_act = np.random.choice(zero_indices)
-        child_node = Node(node)
-        node.child[expand_act] = child_node
-        return expand_act
+    def expansion(self, node):        
+        move = np.random.choice(node.untried_moves)
+        node.untried_moves.remove(move)
+        child_node = Node(node, move)
+        node.child[move] = child_node
+        return child_node
 
-    def simulation(self, expand_act, k = 1):
+    def evaluation(self, target_node):
         '''
         1. Move to leaf state fow action history
         2. Start simulation from leaf state
         3. Calc average score from terminal gridsoll
-        '''
-        values = []
-        for _ in range(k):
-            #sim to leaf grid
-            grid = self.root_grid
-            for act in self.act_history:
-                grid = move_grid(grid, act)
+        '''                    
+        grid = self.root_grid
+        node = target_node
 
-            #expanded grid
-            grid = move_grid(grid, expand_act)
-
-            #sim to terminal grid
-            while not isEnd(grid):
-                act = np.random.randint(0, 4)
-                grid = move_grid(grid, act)
-            value = calc_value(grid)
-            values.append(value)
-
-        return np.mean(values)
-
-    def backpropagation(self, leaf_node, value, expand_act):        
-        node = leaf_node
-        act_history = self.act_history.copy()
-        act_history.append(expand_act)
-        for act in reversed(act_history):
-            node.W[act] += value
-            node.N[act] += 1
+        move_history = []
+        while not node.isRoot():
+            move_history.append(node.move)
             node = node.parent
             
-        
-    def simCycle(self):        
-        leaf_node = self.selection()
-        expand_act = self.expansion(leaf_node)
-        grid_value = self.simulation(expand_act)
-        self.backpropagation(leaf_node, grid_value, expand_act)
+        for move in move_history:
+            grid = move_grid(grid, move)
 
-    def getAction(self, n_sim):                
+        #rollout        
+        while not isEnd(grid):                    
+            legal_moves = get_legal_moves(grid)
+            move = np.random.choice(legal_moves)
+            grid = move_grid(grid, move)
+        return calc_value(grid)
+
+    def backpropagation(self, node, value):        
+        node.W += value
+        node.N += 1
+        if not node.isRoot():
+            self.backpropagation(node.parent, value)
+                    
+    def simulation(self):        
+        leaf_node = self.selection()        
+        child_node = self.expansion(leaf_node)
+        value = self.evaluation(child_node)
+        self.backpropagation(child_node, value)
+
+    def getAction(self, root_grid, n_sim):                        
+        self.root_grid = root_grid
+        self.root_node = Node(None, None, root_grid)        
         for _ in range(n_sim):
-            self.simCycle()
-        act = np.argmax(self.root_node.N)
-        self.storeTransition()
-        return act
+            self.simulation()
+        move = max(self.root_node.child.values(), key = lambda x : x.N).move
+        return move
        
-    def storeTransition(self):
-        Qs = [w/(n+1e-8) for w, n in zip(self.root_node.W, self.root_node.N)]
-        grid = self.root_grid
-        self.Q_data.append(Qs)
-        self.grid_data.append(grid)
-        
-    def saveMemory(self, e):
-        datas = [self.grid_data, self.Q_data]
-        with open("./data/transition/{e}.pkl", mode = "wb") as fo:
-            pickle.dump(datas, fo)
-        self.grid_data = []
-        self.Q_data = []
-    
-n_episode = 100
-n_sim = 30
+
+n_episode = 10
+n_sim = 100
 env.goal = 999999
 
 def main():
@@ -151,16 +113,14 @@ def main():
         start_time = time.time()
         done = False
         score = 0
-        grid = env.reset()
-        mcts.setRoot(grid)        
+        grid = env.reset()    
         while not done:        
-            action = mcts.getAction(n_sim)
-            if not mcts.root_node.legal_moves[action]:
+            #env.render()
+            action = mcts.getAction(grid, n_sim)
+            if action not in get_legal_moves(grid):
                 print("warning")
-            grid, reward, done, info = env.step(action, False)
-            score += reward
-            mcts.setRoot(grid, action)            
-        #mcts.saveMemory(e)
+            grid, reward, done, info = env.step(action)
+            score += reward        
         score_list.append(score)
         average_score = np.mean(score_list[-100:])        
         spending_time = time.time() - start_time

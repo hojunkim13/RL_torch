@@ -76,7 +76,7 @@ def spawn_new(grid):
     grid[y][x] = random.randint(0, 10) and 2 or 4
     return grid
 
-def calc_value(grid, mag_decay = 1e+3):
+def calc_value(grid):
     # outcome = np.sum(grid) / mag_decay
     # return np.clip(outcome, 0, 1)
     return np.log(np.sum(grid))
