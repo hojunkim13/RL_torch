@@ -3,6 +3,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Environment.Utils import *
 import numpy as np
 import time
+import random
 
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
@@ -18,21 +19,21 @@ import time
 
 from Environment.DosEnv import _2048
 env = _2048()
+env.goal = 999999
 
 class Node:
-    def __init__(self, parent, move, grid = None):
+    def __init__(self, parent, move, legal_moves = [0,1,2,3]):
         self.parent = parent
         self.W = 0
         self.N = 0
         self.child = {}
         self.move = move
-        if grid is None:
-            self.legal_moves = [1,1,1,1]
-        else:
-            self.legal_moves = get_legal_moves(grid)
+        self.states = []
+        
+        self.legal_moves = legal_moves        
         self.untried_moves = self.legal_moves.copy()
 
-    def calcUCT(self, c_uct = 0.3):
+    def calcUCT(self, c_uct = 0.5):
         Q = self.W / self.N
         exp_component = c_uct * np.sqrt(np.log(self.parent.N) / self.N)
         return Q + exp_component        
@@ -42,66 +43,60 @@ class Node:
 
     def isRoot(self):
         return self.parent is None
+
+    def succeed(self, grid):
+        if grid in self.states:
+            self.states = [grid]            
+            self.parent = None
+            self.move = None
+            self.legal_moves = get_legal_moves(grid)
+            self.untried_moves = []
+            unlegal_moves = list(set([0,1,2,3]) - set(self.legal_moves))
+            for move in unlegal_moves:
+                del self.child[move]
+            return True
+        else:
+            return False
         
 class MCTS:
-    def selection(self):
+    def __init__(self):
+        self.last_move = None
+        
+    def getDepth(self, node):
+        depth = 0
+        while not node.isRoot():
+            depth += 1
+            node = node.parent
+        return depth            
+
+    def select(self):
         node = self.root_node
+        grid = node.states[0]
         while not node.isLeaf():            
             node = max(node.child.values(), key = Node.calcUCT)
+            grid = move_grid(grid, node.move)            
+            node.states.append(grid)
         return node
 
-    def expansion(self, node):        
-        move = np.random.choice(node.untried_moves)
+    def expand(self, node):
+        move = random.choice(node.untried_moves)
         node.untried_moves.remove(move)
+        grid = random.choice(node.states)
+        
+        child_grid = move_grid(grid, move)
         child_node = Node(node, move)
+        child_node.states.append(child_grid)
         node.child[move] = child_node
         return child_node
 
-    def evaluation(self, target_node):
-        '''
-        1. Move to leaf state fow action history
-        2. Start simulation from leaf state
-<<<<<<< HEAD
-        3. Calc average score from terminal gridsoll
-        '''                    
-        grid = self.root_grid
-        node = target_node
-=======
-        3. Calc average score from terminal grid
-        '''
-        values = []
-        for _ in range(k):
-            #sim to leaf grid
-            grid = self.root_grid
-            for act in self.act_history:
-                grid = move_grid(grid, act)
+    def evaluate(self, node):
+        assert len(node.states) == 1        
+        grid = node.states[0]
 
-            #expanded grid
-            grid = move_grid(grid, expand_act)
-
-            #sim to terminal grid
-            while not isEnd(grid):
-                act = np.random.randint(0, 4)
-                grid = move_grid(grid, act)
-            value = calc_value(grid)
-            values.append(value)
-
-        return np.mean(values)
->>>>>>> 8dd72b4f6b159f929d46b61e46c1555371690ec0
-
-        move_history = []
-        while not node.isRoot():
-            move_history.append(node.move)
-            node = node.parent
-            
-        for move in move_history:
-            grid = move_grid(grid, move)
-
-        #rollout        
-        while not isEnd(grid):                    
-            legal_moves = get_legal_moves(grid)
-            move = np.random.choice(legal_moves)
-            grid = move_grid(grid, move)
+        #rollout
+        while not isEnd(grid):                            
+            move = random.choice(range(4))
+            grid = move_grid(grid, move)        
         return calc_value(grid)
 
     def backpropagation(self, node, value):        
@@ -110,26 +105,42 @@ class MCTS:
         if not node.isRoot():
             self.backpropagation(node.parent, value)
                     
-    def simulation(self):        
-        leaf_node = self.selection()        
-        child_node = self.expansion(leaf_node)
-        value = self.evaluation(child_node)
-        self.backpropagation(child_node, value)
+    def serachTree(self):        
+        leaf_node = self.select()
+        if not isEnd(leaf_node.states[-1]):
+            child_node = self.expand(leaf_node)
+            value = self.evaluate(child_node)
+            self.backpropagation(child_node, value)
+        else:
+            value = calc_value(leaf_node.states[-1])
+            self.backpropagation(leaf_node, value)
 
-    def getAction(self, root_grid, n_sim):                        
-        self.root_grid = root_grid
-        self.root_node = Node(None, None, root_grid)        
+    def getAction(self, root_grid, n_sim):        
+        if self.last_move is None:
+            self.root_node = Node(None, None, get_legal_moves(root_grid))
+            self.root_node.states = [root_grid]
+        else:
+            self.root_node = self.reuseTree(root_grid)
+
         for _ in range(n_sim):
-            self.simulation()
-        move = max(self.root_node.child.values(), key = lambda x : x.N).move
+            self.serachTree()
+
+        move = max(self.root_node.child.values(), key = lambda x : x.W / x.N).move
+        self.last_move = move
         return move
        
+    def reuseTree(self, root_grid):
+        subtree = self.root_node.child[self.last_move]
+        success = subtree.succeed(root_grid)
+        if success:
+            return subtree
+        else:
+            node = Node(None, None, get_legal_moves(root_grid))
+            node.states = [root_grid]
+            return node
 
-n_episode = 10
-n_sim = 100
-env.goal = 999999
 
-def main():
+def main(n_episode, n_sim):    
     mcts = MCTS()
     score_list = []
     for e in range(n_episode):
@@ -141,15 +152,15 @@ def main():
             #env.render()
             action = mcts.getAction(grid, n_sim)
             if action not in get_legal_moves(grid):
-                print("warning")
+                raise SystemError("Agent did a unlegal action")
             grid, reward, done, info = env.step(action)
             score += reward        
         score_list.append(score)
         average_score = np.mean(score_list[-100:])        
         spending_time = time.time() - start_time
         print(f"Episode : {e+1} / {n_episode}, Score : {score}, Max Tile : {info}, Average: {average_score:.1f}")
-        print(f"SPENDING TIME : {spending_time:.1f} Sec")
+        print(f"SPENDING TIME : {spending_time:.1f} Sec\n")
     env.close()
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":        
+    main(n_episode = 10, n_sim = 250)

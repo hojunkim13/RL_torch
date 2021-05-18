@@ -2,8 +2,8 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Environment.Utils import *
 import numpy as np
-import torch
 import time
+
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
 # import pygame
@@ -26,7 +26,7 @@ class Node:
         self.parent = parent
         self.move_index = move_index
         self.W = 0
-        self.N = 1e-8
+        self.N = 0
         self.child = {}
         self.legal_moves = get_legal_moves(grid)
         for move in self.legal_moves:
@@ -55,13 +55,17 @@ class MCTS:
     def __init__(self, net = None):
         self.net = net
     
-    def selection(self, node):        
+    def selection(self, node):
+        if node.untried_moves != []:
+            max_move = node.untried_moves[0]
+            node.untried_moves.remove(max_move)
+            return max_move
         values = {k:0 for k in node.legal_moves}
         for move in node.legal_moves:
-            childs = node.child[move]
+            childs = node.child[move]            
             for child in childs.values():
                 values[move] += child.calcUCT() 
-            values[move] /= (len(childs) + 1e-8)
+            values[move] /= len(childs)
         max_move = max(values, key = values.get)
         return max_move
         
@@ -78,8 +82,10 @@ class MCTS:
 
     def evaluation(self, child_node):                                
         grid = child_node.grid
-        value = self.rollout(grid)
-        return value
+        value = 0
+        for _ in range(10):
+            value += self.rollout(grid)
+        return value / 10
 
     def rollout(self, grid):
         while not isEnd(grid):
@@ -97,6 +103,9 @@ class MCTS:
     def search_cycle(self):
         node = self.root_node        
         while True:
+            if isEnd(node.grid):
+                new_node = node
+                break
             max_move = self.selection(node)
             new_grid = move_grid(node.grid, max_move)
             if str(new_grid) in node.child[max_move].keys():                
@@ -125,9 +134,7 @@ class MCTS:
         return max_move
        
     
-def main():
-    n_episode = 1
-    n_sim = 100
+def main(n_episode, n_sim):
     env.goal = 999999
     mcts = MCTS()
     score_list = []
@@ -137,7 +144,7 @@ def main():
         score = 0
         grid = env.reset()    
         while not done:
-            env.render()
+            #env.render()
             action = mcts.search(n_sim, grid)
             grid, reward, done, info = env.step(action)
             score += reward                    
@@ -149,4 +156,7 @@ def main():
     env.close()
 
 if __name__ == "__main__":
-    main()
+    n_episode = 1
+    n_sim = 100
+    main(n_episode, n_sim)
+    
