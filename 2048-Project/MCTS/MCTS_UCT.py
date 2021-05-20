@@ -25,7 +25,7 @@ class Node:
     def __init__(self, parent, move, legal_moves = [0,1,2,3]):
         self.parent = parent
         self.W = 0
-        self.N = 0
+        self.N = 0        
         self.child = {}
         self.move = move
         self.states = []
@@ -34,7 +34,7 @@ class Node:
         self.untried_moves = self.legal_moves.copy()
 
     def calcUCT(self, c_uct = 0.5):
-        Q = self.W / self.N
+        Q = self.W / self.N        
         exp_component = c_uct * np.sqrt(np.log(self.parent.N) / self.N)
         return Q + exp_component        
         
@@ -49,8 +49,7 @@ class Node:
             self.states = [grid]            
             self.parent = None
             self.move = None
-            self.legal_moves = get_legal_moves(grid)
-            self.untried_moves = []
+            self.legal_moves = get_legal_moves(grid)            
             unlegal_moves = list(set([0,1,2,3]) - set(self.legal_moves))
             for move in unlegal_moves:
                 del self.child[move]
@@ -73,8 +72,8 @@ class MCTS:
         node = self.root_node
         grid = node.states[0]
         while not node.isLeaf():            
-            node = max(node.child.values(), key = Node.calcUCT)
-            grid = move_grid(grid, node.move)            
+            node = max(node.child.values(), key = Node.calcUCT)            
+            grid = move_grid(grid, node.move)
             node.states.append(grid)
         return node
 
@@ -89,33 +88,34 @@ class MCTS:
         node.child[move] = child_node
         return child_node
 
-    def evaluate(self, node):
-        assert len(node.states) == 1        
+    def evaluate(self, node):        
         grid = node.states[0]
-
         #rollout
+        step = 0
         while not isEnd(grid):                            
             move = random.choice(range(4))
-            grid = move_grid(grid, move)        
-        return calc_value(grid)
+            grid = move_grid(grid, move)
+            step += 1
+            if step >= 25:
+                break
+        return (step / 25) ** 2
 
     def backpropagation(self, node, value):        
-        node.W += value
+        node.W += value        
         node.N += 1
         if not node.isRoot():
             self.backpropagation(node.parent, value)
                     
-    def serachTree(self):        
+    def searchTree(self):        
         leaf_node = self.select()
         if not isEnd(leaf_node.states[-1]):
             child_node = self.expand(leaf_node)
             value = self.evaluate(child_node)
             self.backpropagation(child_node, value)
         else:
-            value = calc_value(leaf_node.states[-1])
-            self.backpropagation(leaf_node, value)
+            self.backpropagation(leaf_node, 0)
 
-    def getAction(self, root_grid, n_sim):        
+    def getAction(self, root_grid, n_sim):
         if self.last_move is None:
             self.root_node = Node(None, None, get_legal_moves(root_grid))
             self.root_node.states = [root_grid]
@@ -123,9 +123,10 @@ class MCTS:
             self.root_node = self.reuseTree(root_grid)
 
         for _ in range(n_sim):
-            self.serachTree()
+            self.searchTree()
 
-        move = max(self.root_node.child.values(), key = lambda x : x.W / x.N).move
+        #move = max(self.root_node.child.values(), key = lambda x : x.W / x.N).move
+        move = max(self.root_node.child.values(), key = lambda x : x.N).move
         self.last_move = move
         return move
        
@@ -163,4 +164,4 @@ def main(n_episode, n_sim):
     env.close()
 
 if __name__ == "__main__":        
-    main(n_episode = 10, n_sim = 250)
+    main(n_episode = 1, n_sim = 100)
