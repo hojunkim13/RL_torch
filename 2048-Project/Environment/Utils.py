@@ -1,3 +1,4 @@
+from copy import deepcopy
 import random
 import numpy as np
 from Environment import logic
@@ -46,8 +47,9 @@ def free_cells(grid):
     return [(x, y) for x in range(4) for y in range(4) if not grid[y][x]]
 
 
-def move(grid, action):
-    moved = 0
+def move_and_get_sum(grid, action):
+    moved, sum = 0, 0
+    grid = deepcopy(grid)
     for row, column in CELLS[action]:
         for dr, dc in GET_DELTAS[action](row, column):
             # If the current tile is blank, but the candidate has value:
@@ -64,7 +66,9 @@ def move(grid, action):
                     moved += 1
             # When hitting a tile we stop trying.
                 break
-    return grid, moved
+    if moved:
+        grid = spawn_new(grid)
+    return grid, moved, sum
 
 
 def spawn_new(grid):
