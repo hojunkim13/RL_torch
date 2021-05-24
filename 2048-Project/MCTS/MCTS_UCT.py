@@ -88,21 +88,31 @@ class MCTS:
         return merged_sum
 
     def SNM_policy(self, grid):
-        snm_counts = []
-        grids = []
-        for move in range(4):
-            grid_, _, merged_sum = move_and_get_sum(grid, move)
-            snm_counts.append(merged_sum)
-            grids.append(grid_)
-        move = np.argmax(snm_counts)
-        return grids[move], snm_counts[move]
+        snm_counts = []        
+        for move in range(2):
+            _, _, merged_sum = move_and_get_sum(grid, move)
+            snm_counts.append(merged_sum)            
+
+        if snm_counts[0] >= snm_counts[1]:
+            move = random.choice([0, 2])            
+        else:
+            move = random.choice([1, 3])
+
+        grid = move_grid(grid, move)
+        return grid, max(snm_counts)
 
     def CNM_policy(self, grid):
         cnm_counts = []
-        for move in range(4):
+        for move in range(0, 1):
             grid_ = move_grid(grid, move)
             cnm_counts.append(len(free_cells(grid_)))
-        return np.argmax(cnm_counts)
+        
+        if cnm_counts[0] >= cnm_counts[1]:
+            move = random.choice([0, 2])            
+        else:
+            move = random.choice([1, 3])
+        grid = move_grid(grid, move)
+        return grid
 
     def backpropagation(self, node, value):
         node.W = (node.N * node.W + value) / (node.N + 1)

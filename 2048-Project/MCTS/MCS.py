@@ -28,14 +28,31 @@ class MCTS:
         pass
 
     def SNM_policy(self, grid):
-        snm_counts = []
-        grids = []
-        for move in range(4):
-            grid_, _, merged_sum = move_and_get_sum(grid, move)
-            snm_counts.append(merged_sum)
-            grids.append(grid_)
-        move = np.argmax(snm_counts)
-        return grids[move], snm_counts[move]
+        snm_counts = []        
+        for move in range(2):
+            _, _, merged_sum = move_and_get_sum(grid, move)
+            snm_counts.append(merged_sum)            
+
+        if snm_counts[0] >= snm_counts[1]:
+            move = random.choice([0, 2])
+            
+        else:
+            move = random.choice([1, 3])
+        grid = move_grid(grid, move)
+        return grid, max(snm_counts)
+    
+    def CNM_policy(self, grid):
+        cnm_counts = []
+        for move in range(0, 1):
+            grid_ = move_grid(grid, move)
+            cnm_counts.append(len(free_cells(grid_)))
+        
+        if cnm_counts[0] >= cnm_counts[1]:
+            move = random.choice([0, 2])            
+        else:
+            move = random.choice([1, 3])
+        grid = move_grid(grid, move)
+        return grid
 
     def getAction(self, root_grid, n_sim):        
         legal_moves = get_legal_moves(root_grid)
@@ -47,21 +64,14 @@ class MCTS:
             step = 0
             while not isEnd(grid):
                 grid, value = self.SNM_policy(grid)
+                #grid = move_grid(grid, random.choice(range(4)))                
                 values[action] += value
-                #grid = move_grid(grid, random.choice(range(4)))
-                #grid = move_grid(grid, random.choice(range(4)))
                 step += 1
                 if step >= 80:
                     break
-            # values[action] += np.sum(grid)
-            visits[action] += 1
-
-            #values[action] += np.sum(grid)
-        #action = max(legal_moves, key = lambda x : values[x] / visits[x])        
-        vs = [0,0,0,0]
-        for idx in values.keys():
-            vs[idx] = values[idx] / visits[idx]
-        return np.argmax(vs)
+            visits[action] += 1            
+        action = max(legal_moves, key = lambda x : values[x] / visits[x])                
+        return action
     
         
 
@@ -74,7 +84,7 @@ def main(n_episode, n_sim):
         score = 0
         grid = env.reset()
         while not done:
-            env.render()
+            #env.render()
             action = mcts.getAction(grid, n_sim)
             grid, reward, done, info = env.step(action)
             score += reward
@@ -89,4 +99,4 @@ def main(n_episode, n_sim):
 
 
 if __name__ == "__main__":
-    main(n_episode=1, n_sim=100)
+    main(n_episode=10, n_sim=100)
