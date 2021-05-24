@@ -45,20 +45,6 @@ class Node:
     def isRoot(self):
         return self.parent is None
 
-    def succeed(self, grid):
-        if grid in self.states:
-            self.states = [grid]
-            self.parent = None
-            self.move = None
-            self.legal_moves = get_legal_moves(grid)
-            unlegal_moves = list(set([0, 1, 2, 3]) - set(self.legal_moves))
-            for move in unlegal_moves:
-                del self.child[move]
-            return True
-        else:
-            return False
-
-
 class MCTS:
     def __init__(self):
         self.last_move = None
@@ -86,30 +72,30 @@ class MCTS:
         return child_node
 
     def evaluate(self, grid):                        
-        if len(free_cells(grid)) <= 5:
-            max_step = 80
-        else:
-            max_step = 40
-
+        # if len(free_cells(grid)) >= 5 and np.max(grid) <= 1024:
+        #     max_step = 80
+        # else:
+        #     max_step = 80
+        max_step = 80
+        merged_sum = 0        
         step = 0
-        merged_sum = 0
-
         while not isEnd(grid):
-            move = self.CNM_policy(grid)
-            #move = random.choice(range(4))
-            grid, _, merged_val = move_and_get_sum(grid, move)
+            grid, merged_val = self.SNM_policy(grid)
             merged_sum += merged_val
             step += 1
             if step >= max_step:
-                break        
+                break
         return merged_sum
 
     def SNM_policy(self, grid):
         snm_counts = []
+        grids = []
         for move in range(4):
-            _, _, merged_sum = move_and_get_sum(grid, move)
+            grid_, _, merged_sum = move_and_get_sum(grid, move)
             snm_counts.append(merged_sum)
-        return np.argmax(snm_counts)
+            grids.append(grid_)
+        move = np.argmax(snm_counts)
+        return grids[move], snm_counts[move]
 
     def CNM_policy(self, grid):
         cnm_counts = []
@@ -131,38 +117,38 @@ class MCTS:
 
         if not isEnd(grid):
             child_node = self.expand(leaf_node)
-            value = self.evaluate(grid)
+            value = self.evaluate(grid)            
             self.backpropagation(child_node, value)
         else:
             self.backpropagation(leaf_node, 0)
 
     def getAction(self, root_grid, n_sim):
-        self.root_node = Node(None, None, get_legal_moves(root_grid))
-        self.root_grid = root_grid
+        # self.root_node = Node(None, None, get_legal_moves(root_grid))
+        # self.root_grid = root_grid
         
-        # if self.last_move is None:
-        #     self.root_node = Node(None, None, get_legal_moves(root_grid))
-        #     self.root_node.states = [root_grid]
-        # else:
-        #     self.root_node = self.reuseTree(root_grid)
-
-        for _ in range(n_sim):
-            self.searchTree()
-
-        # move = max(self.root_node.child.values(), key = lambda x : x.W / x.N).move
-        move = max(self.root_node.child.values(), key=lambda x: x.N).move
-        self.last_move = move
-        return move
-
-    def reuseTree(self, root_grid):
-        subtree = self.root_node.child[self.last_move]
-        success = subtree.succeed(root_grid)
-        if success:
-            return subtree
+        if self.last_move is None:
+            self.root_node = Node(None, None, get_legal_moves(root_grid))
+            self.root_grid = root_grid
         else:
-            node = Node(None, None, get_legal_moves(root_grid))
-            node.states = [root_grid]
-            return node
+            new_root_node = self.root_node.child[self.last_move]
+            new_root_node.parent = None
+            new_root_node.move = None
+
+            new_root_node.legal_moves = get_legal_moves(root_grid)            
+            unlegal_moves = list(set([0, 1, 2, 3]) - set(new_root_node.legal_moves))
+            for move in unlegal_moves:
+                del new_root_node.child[move]
+            self.root_node = new_root_node
+            self.root_grid = root_grid
+        
+        for _ in range(n_sim):            
+            self.searchTree()
+        
+        robust_move = max(self.root_node.child.values(), key=lambda x: x.N).move
+        self.last_move = robust_move
+        return robust_move
+    
+        
 
 
 def main(n_episode, n_sim):
@@ -191,4 +177,4 @@ def main(n_episode, n_sim):
 
 
 if __name__ == "__main__":
-    main(n_episode=1, n_sim=200)
+    main(n_episode=1, n_sim=100)
