@@ -5,7 +5,7 @@ from Environment.Utils import *
 import numpy as np
 import time
 import random
-
+import torch
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
 # import pygame
@@ -16,7 +16,7 @@ import random
 # pygame.display.set_caption("2048!")
 # pygame.display.set_icon(Game2048.icon(32))
 # env = Game2048_wrapper(screen, p1, p2)
-# env.draw()
+
 
 from Environment.DosEnv import _2048
 
@@ -34,7 +34,7 @@ class Node:
         self.legal_moves = legal_moves
         self.untried_moves = self.legal_moves.copy()
 
-    def calcUCT(self, c_uct=0.8):
+    def calcUCT(self, c_uct=0.5):
         Q = self.W / self.N
         exp_component = c_uct * np.sqrt(np.log(self.parent.N) / self.N)
         return Q + exp_component
@@ -47,8 +47,9 @@ class Node:
 
 
 class MCTS:
-    def __init__(self):
-        self.last_move = None        
+    def __init__(self, net = None):
+        self.last_move = None
+        self.net = net
 
     def getDepth(self, node):
         depth = 0
@@ -73,37 +74,12 @@ class MCTS:
         return child_node
 
     def evaluate(self, grid):
-        # if len(free_cells(grid)) >= 5 and np.max(grid) <= 1024:
-        #     max_step = 80
-        # else:
-        #     max_step = 80
-        max_step = 80
-        merged_sum = 0
-        step = 0
-        while not isEnd(grid):
-            grid, merged_val = self.SNM_policy(grid)
-            merged_sum += merged_val
-            step += 1
-            if step >= max_step:
-                break
-        return merged_sum
+        
 
-    def SNM_policy(self, grid):
-        snm_counts = []
-        grids = []
-        for move in range(4):
-            grid_, _, merged_sum = move_and_get_sum(grid, move)
-            snm_counts.append(merged_sum)
-            grids.append(grid_)
-        move = np.argmax(snm_counts)
-        return grids[move], snm_counts[move]
-
-    def CNM_policy(self, grid):
-        cnm_counts = []
-        for move in range(4):
-            grid_ = move_grid(grid, move)
-            cnm_counts.append(len(free_cells(grid_)))
-        return np.argmax(cnm_counts)
+        state = preprocessing(grid)
+        with torch.no_grad():
+            value = self.net()
+        return value.squeeze().cpu().item()
 
     def backpropagation(self, node, value):
         node.W = (node.N * node.W + value) / (node.N + 1)
@@ -117,9 +93,9 @@ class MCTS:
         leaf_node, grid = self.select(node, grid)
 
         if not isEnd(grid):
-            child_node = self.expand(leaf_node)            
+            child_node = self.expand(leaf_node)
             value = self.evaluate(grid)
-            self.backpropagation(child_node, value)            
+            self.backpropagation(child_node, value)
         else:
             self.backpropagation(leaf_node, 0)
 
@@ -145,7 +121,7 @@ class MCTS:
         for _ in range(n_sim):
             self.searchTree()
 
-        robust_move = max(self.root_node.child.values(), key=lambda x: x.N).move
+        robust_move = max(self.root_node.child.values(), key=lambda x: x.N).move                
         self.last_move = robust_move
         return robust_move
 
@@ -159,10 +135,10 @@ def main(n_episode, n_sim):
         score = 0
         grid = env.reset()
         while not done:
-            #env.render()
+            env.render()            
             action = mcts.getAction(grid, n_sim)
-            if action not in get_legal_moves(grid):
-                raise SystemError("Agent did a unlegal action")
+            # if action not in get_legal_moves(grid):
+            #     raise SystemError("Agent did a unlegal action")
             grid, reward, done, info = env.step(action)
             score += reward
         score_list.append(score)
@@ -176,4 +152,4 @@ def main(n_episode, n_sim):
 
 
 if __name__ == "__main__":
-    main(n_episode=10, n_sim=100)
+    main(n_episode=1, n_sim=100)

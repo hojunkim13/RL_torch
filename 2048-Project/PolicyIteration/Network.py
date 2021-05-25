@@ -63,10 +63,8 @@ class Network(nn.Module):
         self.cuda()
 
     def forward(self, x):
-        x = self.conv_block(x)     
-        x = self.res_blocks(x)            
-        policy = self.policy(x)
-        policy = torch.distributions.Categorical(policy)
-        value = self.value(x)        
-        return policy, value
+        x = self.conv_block(x)
+        x = self.res_blocks(x)
+        value = self.value(x)
+        return value
     

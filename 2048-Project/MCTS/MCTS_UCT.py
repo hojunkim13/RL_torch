@@ -6,22 +6,22 @@ import numpy as np
 import time
 import random
 
-from _2048 import Game2048
-from Environment.PrettyEnv import Game2048_wrapper
-import pygame
-p1 = os.path.join("data/game", '2048_.score')
-p2 = os.path.join("data/game", '2048_.%d.state')
-screen = pygame.display.set_mode((Game2048.WIDTH, Game2048.HEIGHT))
-pygame.init()
-pygame.display.set_caption("2048!")
-pygame.display.set_icon(Game2048.icon(32))
-env = Game2048_wrapper(screen, p1, p2)
-env.draw()
+# from _2048 import Game2048
+# from Environment.PrettyEnv import Game2048_wrapper
+# import pygame
+# p1 = os.path.join("data/game", '2048_.score')
+# p2 = os.path.join("data/game", '2048_.%d.state')
+# screen = pygame.display.set_mode((Game2048.WIDTH, Game2048.HEIGHT))
+# pygame.init()
+# pygame.display.set_caption("2048!")
+# pygame.display.set_icon(Game2048.icon(32))
+# env = Game2048_wrapper(screen, p1, p2)
 
-# from Environment.DosEnv import _2048
 
-# env = _2048()
-# env.goal = 999999
+from Environment.DosEnv import _2048
+
+env = _2048()
+env.goal = 999999
 
 
 class Node:
@@ -107,23 +107,23 @@ class MCTS:
             self.backpropagation(leaf_node, 0)
 
     def getAction(self, root_grid, n_sim):
-        self.root_node = Node(None, None, get_legal_moves(root_grid))
-        self.root_grid = root_grid
+        # self.root_node = Node(None, None, get_legal_moves(root_grid))
+        # self.root_grid = root_grid
 
-        # if self.last_move is None:
-        #     self.root_node = Node(None, None, get_legal_moves(root_grid))
-        #     self.root_grid = root_grid
-        # else:
-        #     new_root_node = self.root_node.child[self.last_move]
-        #     new_root_node.parent = None
-        #     new_root_node.move = None
+        if self.last_move is None:
+            self.root_node = Node(None, None, get_legal_moves(root_grid))
+            self.root_grid = root_grid
+        else:
+            new_root_node = self.root_node.child[self.last_move]
+            new_root_node.parent = None
+            new_root_node.move = None
 
-        #     new_root_node.legal_moves = get_legal_moves(root_grid)
-        #     unlegal_moves = list(set([0, 1, 2, 3]) - set(new_root_node.legal_moves))
-        #     for move in unlegal_moves:
-        #         del new_root_node.child[move]
-        #     self.root_node = new_root_node
-        #     self.root_grid = root_grid
+            new_root_node.legal_moves = get_legal_moves(root_grid)
+            unlegal_moves = list(set([0, 1, 2, 3]) - set(new_root_node.legal_moves))
+            for move in unlegal_moves:
+                del new_root_node.child[move]
+            self.root_node = new_root_node
+            self.root_grid = root_grid
 
         for _ in range(n_sim):
             self.searchTree()
@@ -142,8 +142,7 @@ def main(n_episode, n_sim):
         score = 0
         grid = env.reset()
         while not done:
-            #env.render()
-            env.draw()
+            env.render()            
             action = mcts.getAction(grid, n_sim)
             # if action not in get_legal_moves(grid):
             #     raise SystemError("Agent did a unlegal action")

@@ -1,80 +1,70 @@
-from PolicyIteration.PolicyNetwork import Network
+import os, sys
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from PolicyIteration.Network import Network
 from torch.optim import Adam
 from Environment.Utils import *
-from MyMCTS import MCTS
+from MCTS.MCTS_UCT_Valuenet import MCTS
 import torch
 import numpy as np
 import random
-import time
 from Logger import logger
+from collections import deque
 
 
 class Agent:
-    def __init__(self, state_dim, action_dim, lr, batch_size, n_sim):
+    def __init__(self, state_dim, action_dim, lr, batch_size, n_sim, maxlen):
         self.net = Network(state_dim, action_dim)
-        self.optimizer = Adam(self.net.parameters(), lr = lr, weight_decay= 1e-4, betas=(0.8, 0.999))
-        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)
-                
+        self.optimizer = Adam(
+            self.net.parameters(), lr=lr, weight_decay=1e-4, betas=(0.8, 0.999)
+        )
+        # self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[50,100,150,200,250,300,400], gamma=0.77)
         self.n_sim = n_sim
         self.state_dim = state_dim
         self.batch_size = batch_size
-        self.trajectory = []
+        self.mcts = MCTS()
+        self.state_memory = deque(maxlen=maxlen)
+        self.tmp_state_memory = deque()
+        self.reward_memory = deque(maxlen=maxlen)
+        self.tmp_reward_memory = deque()
 
-    def getAction(self, grid, log = False):
-        start_time = time.time()
-        mcts = MCTS(grid, self.net)
-        
-        while mcts.search_count != (self.n_sim + 1):
-            mcts.tree_search()
-        tau = 1 if self.step_count <= 30 else 0
+    def getAction(self, grid):
+        action = self.mcts.getAction(grid, self.n_sim)        
+        return action
 
-        probs, edge_info = mcts.get_probs(tau)
-        edge_info = np.array(edge_info, dtype = np.float16)
-        if tau:
-            action = np.random.choice(range(4), p = probs)
-        else:
-            action = np.argmax(probs)
-        
-        if log:
-            for line in grid:
-                logger.info(line)
-            act_dir = {0:"LEFT", 1:"UP",2:"RIGHT",3:"DOWN"}[int(action)]
-            time_spend = time.time() - start_time
-            logger.info(f"# Step {self.step_count}, : {act_dir}, Thinking Time : {time_spend:.1f}sec, Moves : {mcts.root_node.legal_moves}")
-            logger.info(f"# Q : {edge_info[0]}, N : {edge_info[1]}, P : {edge_info[2]}\n\n")
+    def storeTranstion(self, *transition):
+        state = transition[0]
+        reward = transition[1]
+        self.tmp_state_memory.append(state)
+        self.tmp_reward_memory.append(reward)
 
-        #safty
-        if mcts.root_node.legal_moves[action] == 0:
-            print("WARNING")
-        self.step_count += 1
-        return action, probs
+    def pushMemory(self):
+        n_step_rewards = deque()
+        for idx in range(len(self.tmp_reward_memory)):
+            n_step_reward = sum(np.array(self.tmp_reward_memory)[idx : idx + 10])
+            n_step_rewards.append(n_step_reward)
+        self.state_memory += self.tmp_state_memory
+        self.reward_memory += n_step_rewards
 
-    def storeTransition(self, *transition):
-        state = preprocessing(transition[0])
-        probs = transition[1]
-        transition = np.array((state, probs), dtype = object)
-        self.trajectory.append(transition)
+        self.tmp_state_memory.clear()
+        self.tmp_reward_memory.clear()
 
     def learn(self):
-        try:
-            trajectory = random.sample(self.trajectory, self.batch_size)        
-        except ValueError:
-            trajectory = self.trajectory
+        idx_max = len(self.state_memory)
+        max_sample_n = min(self.batch_size, idx_max)
+        indice = random.sample(range(idx_max), max_sample_n)
+        states = np.array(self.state_memory, dtype=np.float32)[indice]
+        rewards = np.array(self.reward_memory, dtype=np.float32)[indice]
 
-        trajectory = np.array(trajectory, dtype = object)
-        S = np.vstack(trajectory[:,0]).reshape(-1, *self.state_dim)
-        S = torch.tensor(S, dtype = torch.float).cuda()        
-        mcts_probs = np.vstack(trajectory[:,1])        
-        mcts_probs = torch.tensor(mcts_probs, dtype = torch.float).cuda()
+        S = torch.tensor(states, dtype=torch.float).cuda().reshape(-1, *self.state_dim)
+        _, value = self.net(S)
+        outcome = torch.tensor(rewards, dtype=torch.float).cuda().view(*value.shape)
+        value_loss = torch.square(value - outcome).mean()
 
-        policy = self.net(S)
-        
-        policy_loss = -(mcts_probs * torch.log(policy + 1e-8)).mean()
-        
         self.optimizer.zero_grad()
-        policy_loss.backward()
+        value_loss.backward()
         self.optimizer.step()
-        self.trajectory = []
+        return value_loss.item()
 
     def save(self, env_name):
         torch.save(self.net.state_dict(), f"./data/model/{env_name}_2048zero.pt")

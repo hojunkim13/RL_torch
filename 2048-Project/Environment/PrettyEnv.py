@@ -56,3 +56,6 @@ class Game2048_wrapper(GameManager):
         reward1 = np.log2(grid.max()) * 2
         reward2 = (len(grid) - np.count_nonzero(grid))
         return reward1 + reward2
+
+    def render(self):
+        super().draw()
