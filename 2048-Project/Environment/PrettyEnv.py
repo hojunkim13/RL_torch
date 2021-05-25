@@ -22,7 +22,7 @@ class Game2048_wrapper(GameManager):
         os.makedirs(data_dir, exist_ok=True)
 
 
-    def reset(self, test_mode = False):
+    def reset(self, test_mode = True):
         self.new_game()
         if not test_mode:
             self.game.ANIMATION_FRAMES = 1

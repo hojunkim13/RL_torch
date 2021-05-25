@@ -5,6 +5,7 @@ from Environment.Utils import *
 import numpy as np
 import time
 import random
+
 # from _2048 import Game2048
 # from Environment.PrettyEnv import Game2048_wrapper
 # import pygame
@@ -24,58 +25,34 @@ env.goal = 999999
 
 
 class MCTS:
-    def __init__(self):        
+    def __init__(self):
         pass
 
-    def SNM_policy(self, grid):
-        snm_counts = []        
-        for move in range(2):
-            _, _, merged_sum = move_and_get_sum(grid, move)
-            snm_counts.append(merged_sum)            
-
-        if snm_counts[0] >= snm_counts[1]:
-            move = random.choice([0, 2])
-            
-        else:
-            move = random.choice([1, 3])
-        grid = move_grid(grid, move)
-        return grid, max(snm_counts)
-    
-    def CNM_policy(self, grid):
-        cnm_counts = []
-        for move in range(0, 1):
-            grid_ = move_grid(grid, move)
-            cnm_counts.append(len(free_cells(grid_)))
-        
-        if cnm_counts[0] >= cnm_counts[1]:
-            move = random.choice([0, 2])            
-        else:
-            move = random.choice([1, 3])
-        grid = move_grid(grid, move)
-        return grid
-
-    def getAction(self, root_grid, n_sim):        
+    def getAction(self, root_grid, n_sim, policy, value):
         legal_moves = get_legal_moves(root_grid)
-        values = {k:0 for k in legal_moves}
-        visits = {k:0 for k in legal_moves}
+        values = {k: 0 for k in legal_moves}
+        visits = {k: 0 for k in legal_moves}
         for _ in range(n_sim):
             action = random.choice(legal_moves)
             grid = move_grid(root_grid, action)
             step = 0
+            policy_value = 0
             while not isEnd(grid):
-                grid, value = self.SNM_policy(grid)
-                #grid = move_grid(grid, random.choice(range(4)))                
-                values[action] += value
+                grid, value = policy(grid)
+                policy_value += value
                 step += 1
                 if step >= 80:
                     break
-            visits[action] += 1            
-        action = max(legal_moves, key = lambda x : values[x] / visits[x])                
+            if value == "policy":
+                values[action] += policy_value
+            else:
+                values[action] += np.sum(grid)
+            visits[action] += 1
+        action = max(legal_moves, key=lambda x: values[x] / visits[x])
         return action
-    
-        
 
-def main(n_episode, n_sim):
+
+def main(n_episode, n_sim, policy, value):
     mcts = MCTS()
     score_list = []
     for e in range(n_episode):
@@ -84,8 +61,8 @@ def main(n_episode, n_sim):
         score = 0
         grid = env.reset()
         while not done:
-            #env.render()
-            action = mcts.getAction(grid, n_sim)
+            env.render()
+            action = mcts.getAction(grid, n_sim, policy, value)
             grid, reward, done, info = env.step(action)
             score += reward
         score_list.append(score)
@@ -99,4 +76,13 @@ def main(n_episode, n_sim):
 
 
 if __name__ == "__main__":
-    main(n_episode=10, n_sim=100)
+    n_episode = 1
+    n_sim = 150
+    print("** SNM & total value")
+    main(n_episode=n_episode, n_sim=n_sim, policy=SNM_policy, value="total")
+    # print("** CNM & total value")
+    # main(n_episode=n_episode, n_sim=n_sim, policy = SNM_policy, value = "total")
+    # print("** SNM & Sum merged tiles value")
+    # main(n_episode=n_episode, n_sim=n_sim, policy = SNM_policy, value = "policy")
+    # print("** CNM & Count merged tiles value")
+    # main(n_episode=n_episode, n_sim=n_sim, policy = SNM_policy, value = "policy")
