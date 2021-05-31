@@ -3,7 +3,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PolicyIteration.Agent import Agent
 from Environment.DosEnv import _2048
-from Environment.Utils import preprocessing
+from Environment.Utils import preprocessing, get_legal_moves
 from collections import deque
 
 lr = 1e-4
@@ -28,15 +28,15 @@ def main():
         while not done:
             #env.render()
             action = agent.getAction(grid)
-            if not agent.mcts.root_node.legal_moves[action]:
+            if action not in get_legal_moves(grid):
                 raise SystemError("Agent did illegal action")
             new_grid, reward, done, info = env.step(action)
-            agent.storeTranstion(preprocessing(grid), reward)
+            agent.storeTranstion(preprocessing(grid))
             grid = new_grid
             score += reward
         agent.pushMemory()
-        loss = agent.learn()
         if (e+1) % 10 == 0:
+            loss = agent.learn()
             agent.save("2048")
         score_list.append(score)
         average_score = np.mean(score_list[-100:])        

@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from PolicyIteration.Network import Network
 from torch.optim import Adam
 from Environment.Utils import *
-from MCTS.MCTS_UCT_Valuenet import MCTS
+from MCTS.MCTS_ValueNetwork import MCTS
 import torch
 import numpy as np
 import random
@@ -22,32 +22,28 @@ class Agent:
         self.n_sim = n_sim
         self.state_dim = state_dim
         self.batch_size = batch_size
-        self.mcts = MCTS()
+        self.mcts = MCTS(self.net)
         self.state_memory = deque(maxlen=maxlen)
-        self.tmp_state_memory = deque()
         self.reward_memory = deque(maxlen=maxlen)
-        self.tmp_reward_memory = deque()
+        self.tmp_state_memory = deque()
 
     def getAction(self, grid):
         action = self.mcts.getAction(grid, self.n_sim)        
         return action
 
-    def storeTranstion(self, *transition):
-        state = transition[0]
-        reward = transition[1]
-        self.tmp_state_memory.append(state)
-        self.tmp_reward_memory.append(reward)
+    def storeTranstion(self, state):
+        #state = transition[0]        
+        self.tmp_state_memory.append(state)        
 
     def pushMemory(self):
-        n_step_rewards = deque()
-        for idx in range(len(self.tmp_reward_memory)):
-            n_step_reward = sum(np.array(self.tmp_reward_memory)[idx : idx + 10])
-            n_step_rewards.append(n_step_reward)
+        step_rewards = deque()
+        length = len(self.tmp_state_memory)
+        step_rewards = deque(reversed(range(length)))
+        
         self.state_memory += self.tmp_state_memory
-        self.reward_memory += n_step_rewards
+        self.reward_memory += step_rewards
 
-        self.tmp_state_memory.clear()
-        self.tmp_reward_memory.clear()
+        self.tmp_state_memory.clear()        
 
     def learn(self):
         idx_max = len(self.state_memory)
@@ -57,7 +53,7 @@ class Agent:
         rewards = np.array(self.reward_memory, dtype=np.float32)[indice]
 
         S = torch.tensor(states, dtype=torch.float).cuda().reshape(-1, *self.state_dim)
-        _, value = self.net(S)
+        value = self.net(S)
         outcome = torch.tensor(rewards, dtype=torch.float).cuda().view(*value.shape)
         value_loss = torch.square(value - outcome).mean()
 

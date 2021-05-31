@@ -84,8 +84,8 @@ class MCTS:
             grid, policy_val = SNM_policy(grid)
             policy_value += policy_val
             step += 1
-            if step >= max_step:
-                break
+            # if step >= max_step:
+            #     break
         return policy_value
 
     def backpropagation(self, node, value):

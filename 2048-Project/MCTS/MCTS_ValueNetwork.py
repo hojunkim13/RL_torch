@@ -74,11 +74,10 @@ class MCTS:
         return child_node
 
     def evaluate(self, grid):
-        
-
         state = preprocessing(grid)
+        state = torch.tensor(state).unsqueeze(0).cuda().float()
         with torch.no_grad():
-            value = self.net()
+            value = self.net(state)
         return value.squeeze().cpu().item()
 
     def backpropagation(self, node, value):
