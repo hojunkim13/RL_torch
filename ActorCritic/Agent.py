@@ -1,95 +1,56 @@
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.optim  import Adam
+from torch.optim import Adam
+from network import ActorCritic
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class Actor(nn.Module):
-    def __init__(self, obs_dim, action_dim):
-        super(Actor, self).__init__()
-        self.fc1 = nn.Linear(obs_dim, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, action_dim)
-        self.cuda()
-
-    def forward(self, obs):
-        x = F.relu(self.fc1(obs))
-        x = F.relu(self.fc2(x))
-        probs = torch.softmax(self.fc3(x), dim= -1)
-        return probs
-
-class Critic(nn.Module):
-    def __init__(self, obs_dim, action_dim):
-        super(Critic, self).__init__()
-        self.fc1 = nn.Linear(obs_dim, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 1)
-        self.cuda()
-    
-    def forward(self, obs):
-        x = F.relu(self.fc1(obs))
-        x = F.relu(self.fc2(x))
-        values = self.fc3(x)
-        return values
-
-class ACAgent:
-    def __init__(self, obs_dim, action_dim, alpha, beta, gamma):
-        self.obs_dim = obs_dim
+class Agent:
+    def __init__(self, env_name, state_dim, action_dim, lr, gamma):
+        self.env = env_name
+        self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_space = [i for i in range(action_dim)]
         self.gamma = gamma
-        self.actor = Actor(obs_dim, action_dim)
-        self.critic = Critic(obs_dim, action_dim)
-        self.actor_optimizer = Adam(self.actor.parameters(), lr = alpha)
-        self.critic_optimizer = Adam(self.critic.parameters(), lr = beta)
-        self.critic_loss_fn = nn.MSELoss()
+        self.net = ActorCritic(state_dim, action_dim).to(device)
+        self.optimizer = Adam(self.net.parameters(), lr=lr)
 
-    def get_action(self, obs):
-        obs = torch.FloatTensor(obs).cuda()
-        obs = obs.view(-1, self.obs_dim)
-        probs = self.actor(obs).squeeze().detach().cpu().numpy()
-        action = np.random.choice(self.action_space, p = probs)
+    def getAction(self, state):
+        state = torch.tensor(state, dtype=torch.float32).to(device)
+        state = state.unsqueeze(0)
+        with torch.no_grad():
+            probs = self.net(state)[0].squeeze().cpu().numpy()
+        action = np.random.choice(self.action_dim, p=probs)
         return action
 
     def train(self, s, a, r, s_, d):
-        self.critic_optimizer.zero_grad()
-        self.actor_optimizer.zero_grad()
+        self.optimizer.zero_grad()
+        s = torch.tensor(s, dtype=torch.float32).to(device).unsqueeze(0)
+        a = torch.eye(self.action_dim)[a].to(device)
+        r = torch.tensor(r, dtype=torch.float32).to(device).unsqueeze(0)
+        s_ = torch.tensor(s_, dtype=torch.float32).to(device).unsqueeze(0)
+        d = torch.tensor(d, dtype=torch.bool).to(device).unsqueeze(0)
 
-        s = torch.FloatTensor(s).cuda().unsqueeze(0)
-        a = int(a)
-        action_did = torch.eye(self.action_dim)[a].cuda()
-        r = torch.FloatTensor([r]).cuda()
-        s_ = torch.FloatTensor(s_).cuda().unsqueeze(0)
-        d = torch.FloatTensor([d]).cuda().bool()
+        probs, value = self.net(s)
+        value_ = self.net(s_)[1]
 
-        value = self.critic(s)[0]
-        value_ = self.critic(s_)[0]
-        
         critic_target = r + value_ * self.gamma * ~d
-        critic_loss = self.critic_loss_fn(value, critic_target) 
-        
-        Advantage = critic_target - value
-        action_probs = self.actor(s)
-        actor_loss = self.actor_loss_fn(action_probs, action_did, Advantage)
-        (critic_loss + actor_loss).backward()
-        self.critic_optimizer.step()
-        self.actor_optimizer.step()
+        critic_loss = torch.mean(torch.square(value - critic_target))
 
-    def actor_loss_fn(self, pred, true, Advantage):
-        pred = torch.clip(pred, 1e-8, 1-1e-8)
-        lik = torch.sum(pred * true)
-        log_lik = torch.log(lik)
-        return -log_lik * Advantage
-        
-    def save(self, PATH):
-        path_actor = PATH + 'actor.pth'
-        path_critic = PATH + 'critic.pth'
-        torch.save(self.actor.state_dict(), path_actor)
-        torch.save(self.critic.state_dict(), path_critic)
-    
-    def load(self, PATH):
-        path_actor = PATH + 'actor.pth'
-        path_critic = PATH + 'critic.pth'
-        self.actor.load_state_dict(torch.load(path_actor))
-        self.critic.load_state_dict(torch.load(path_critic))
+        action_prob = torch.sum(probs * a).clip(1e-8, None)
+        advantage = (
+            critic_target - value
+        )  # difference between pred value and real value
+        actor_loss = -torch.log(action_prob) * advantage
+
+        loss = critic_loss + actor_loss
+        loss.backward()
+        self.optimizer.step()
+
+    def save(self, PATH, e):
+        path = PATH + self.env + f"_{e}.pth"
+        torch.save(self.net.state_dict(), path)
+
+    def load(self, PATH, e):
+        path = PATH + self.env + f"_{e}.pth"
+        self.net.load_state_dict(torch.load(path))
