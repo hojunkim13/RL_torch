@@ -49,17 +49,16 @@ class Agent:
         s_ = torch.tensor(self.S_, dtype=torch.float32).to(device)
         d = torch.tensor(self.D, dtype=torch.bool).to(device).view(-1, 1)
 
-        probs, value = self.net(s)
-        value_ = self.net(s_)[1]
+        probs, values = self.net(s)
+        values_ = self.net(s_)[1]
 
-        critic_target = r + value_ * self.gamma * ~d
-        critic_loss = torch.mean(torch.square(value - critic_target))
+        Qs = r + values_ * self.gamma * ~d
+        advantage = Qs - values  # difference between pred value and real value
 
-        action_prob = torch.gather(probs, 1, a).clip(1e-8, None)
-        advantage = (
-            critic_target - value
-        )  # difference between pred value and real value
-        actor_loss = torch.mean(-torch.log(action_prob) * advantage)
+        critic_loss = torch.mean(torch.square(advantage))
+
+        action_probs = torch.gather(probs, 1, a).clip(1e-8, None)
+        actor_loss = torch.mean(-torch.log(action_probs) * advantage)
 
         loss = critic_loss + actor_loss
         loss.backward()

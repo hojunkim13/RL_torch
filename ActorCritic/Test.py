@@ -8,7 +8,7 @@ EPOCHS = 10
 if __name__ == "__main__":
     env = gym.make(ENV_NAME)
     agent = Agent(ENV_NAME, state_dim, action_dim, 1, 1, 1)
-    agent.load(PATH, 500)
+    agent.load(PATH, 3000)
     score_list = []
 
     for e in range(EPOCHS):

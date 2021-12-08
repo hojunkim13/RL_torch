@@ -8,19 +8,19 @@ env = gym.make(ENV_NAME)
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.n
 
-lr = 3e-4
+lr = 1e-4
 gamma = 0.99
-n_step = 300
+n_step = 1
 EPOCHS = 3000
 
 
 render = False
 load = False
-SAVE_FREQ = 100
+SAVE_FREQ = EPOCHS
 PATH = "weights/"
 
 
-def moving_average(score, n=3):
+def moving_average(score, n=20):
     ret = np.cumsum(score, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1 :] / n
